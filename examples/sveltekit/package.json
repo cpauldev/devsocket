@@ -12,8 +12,7 @@
   "dependencies": {
     "@lucide/svelte": "^0.575.0",
     "example": "workspace:*",
-    "example-ui": "workspace:*",
-    "universa-ui": "file:../../../universa-ui"
+    "example-ui": "workspace:*"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^7.0.1",

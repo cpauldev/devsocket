@@ -621,6 +621,22 @@
   min-width: 0;
 }
 
+.overlay-runtime-columns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.overlay-runtime-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 0 calc(50% - 8px);
+  max-width: calc(50% - 8px);
+  min-width: 0;
+}
+
 .overlay-actions {
   display: flex;
   flex-wrap: wrap;

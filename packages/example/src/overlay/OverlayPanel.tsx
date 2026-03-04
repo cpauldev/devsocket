@@ -951,7 +951,9 @@ function RuntimePane({
           {(controlsSection?.actions ?? []).map((action) => (
             <Button
               key={action.id}
-              variant="outline"
+              variant={
+                action.disabled || action.loading ? "secondary" : "outline"
+              }
               disabled={action.disabled}
               onClick={resolveRuntimeActionHandler(action, {
                 onStart,
@@ -971,9 +973,9 @@ function RuntimePane({
         )}
       </div>
 
-      <div className="grid grid-cols-1 content-start items-start gap-4 md:grid-cols-2">
+      <div className="overlay-runtime-columns">
         {runtimeSections.map((section) => (
-          <div key={section.id} className="overlay-section">
+          <div key={section.id} className="overlay-runtime-column">
             <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-muted-foreground">
               {section.title}
             </h4>

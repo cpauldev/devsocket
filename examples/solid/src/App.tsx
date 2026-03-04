@@ -1,4 +1,4 @@
-import { mountVanillaDashboard } from "example-ui/vanilla-dashboard";
+import { mountExampleDashboard } from "example-ui/dashboard-client";
 import { onCleanup, onMount } from "solid-js";
 
 export default function App() {
@@ -6,7 +6,7 @@ export default function App() {
 
   onMount(() => {
     if (!root) return;
-    const cleanup = mountVanillaDashboard({
+    const cleanup = mountExampleDashboard({
       root,
       frameworkId: "solid",
     });

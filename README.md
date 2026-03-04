@@ -1,8 +1,7 @@
-# UniversaKit 🪼
+# UniversaKit
 
 <p align="center">
-  <img src="assets/jellyfishy.png" alt="Universa jellyfish mascot" width="80" style="vertical-align: middle;" />
-  <img src="assets/universa-logo.png" alt="Universa logo" width="480" style="vertical-align: middle;" />
+  <img src="assets/universa-logo.png" alt="Universa logo" width="500" style="vertical-align: middle;" />
 </p>
 
 <p align="center">

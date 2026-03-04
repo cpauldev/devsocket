@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
 
-import { mountVanillaDashboard } from "example-ui/vanilla-dashboard";
+import { mountExampleDashboard } from "example-ui/dashboard-client";
 
 const root = ref<HTMLElement | null>(null);
 let cleanup: (() => void) | null = null;
@@ -11,7 +11,7 @@ onMounted(() => {
     throw new Error("Missing dashboard root");
   }
 
-  cleanup = mountVanillaDashboard({
+  cleanup = mountExampleDashboard({
     root: root.value,
     frameworkId: "vue",
   });

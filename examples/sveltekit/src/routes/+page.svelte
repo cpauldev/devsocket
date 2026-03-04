@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
-  import { mountVanillaDashboard } from "example-ui/vanilla-dashboard";
+  import { mountExampleDashboard } from "example-ui/dashboard-client";
 
   let root: HTMLDivElement | null = null;
 
@@ -10,7 +10,7 @@
       throw new Error("Missing dashboard root");
     }
 
-    const cleanup = mountVanillaDashboard({
+    const cleanup = mountExampleDashboard({
       root,
       frameworkId: "sveltekit",
     });

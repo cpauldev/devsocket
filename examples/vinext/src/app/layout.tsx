@@ -1,6 +1,5 @@
 import "example-ui/layout.css";
 import type { Metadata } from "next";
-import "universa-ui/styles.css";
 
 export const metadata: Metadata = {
   title: "Example — Vinext",

@@ -1,4 +1,4 @@
-import { mountVanillaDashboard } from "example-ui/vanilla-dashboard";
+import { mountExampleDashboard } from "example-ui/dashboard-client";
 import { useEffect, useRef } from "react";
 
 export default function App() {
@@ -10,7 +10,7 @@ export default function App() {
       throw new Error("Missing dashboard root");
     }
 
-    const cleanup = mountVanillaDashboard({
+    const cleanup = mountExampleDashboard({
       root,
       frameworkId: "react",
     });

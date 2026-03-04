@@ -3,9 +3,9 @@ import { example } from "example";
 export default defineNuxtConfig({
   ssr: false,
   modules: ["nuxt-lucide-icons", example().nuxt()],
-  css: ["example-ui/layout.css", "universa-ui/styles.css"],
+  css: ["example-ui/layout.css"],
   build: {
-    transpile: ["example-ui", "universa-ui"],
+    transpile: ["example-ui"],
   },
   compatibilityDate: "2024-04-03",
   app: {

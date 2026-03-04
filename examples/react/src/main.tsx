@@ -2,7 +2,6 @@ import "example-ui/layout.css";
 import { applyTheme, getInitialTheme } from "example-ui/theme";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "universa-ui/styles.css";
 
 import App from "./App.tsx";
 

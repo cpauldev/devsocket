@@ -1,6 +1,6 @@
 "use client";
 
-import { mountVanillaDashboard } from "example-ui/vanilla-dashboard";
+import { mountExampleDashboard } from "example-ui/dashboard-client";
 import { useEffect, useRef } from "react";
 
 export function ClientPage() {
@@ -12,7 +12,7 @@ export function ClientPage() {
       throw new Error("Missing dashboard root");
     }
 
-    const cleanup = mountVanillaDashboard({
+    const cleanup = mountExampleDashboard({
       root,
       frameworkId: "nextjs",
     });
