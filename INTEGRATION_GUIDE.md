@@ -134,8 +134,87 @@ window.addEventListener("beforeunload", () => unsubscribe());
 - `bridgePathPrefix` is normalized under `/__universa`.
 - Keep your public API stable (`acmetool().vite()`, `acmetool().next(...)`, etc.).
 
+## 7) Preset composition and client auto-mount behavior
 
-## 7) Adapter-specific notes (when presets are not your integration surface)
+- `createUniversaPreset` defaults to `composition: "registry"`.
+- In `"registry"` mode, framework/build adapters compose all registered presets (`vite`, `next`, `nuxt`, `astro`, `webpack`, `rsbuild`, `rspack`).
+- In `"local"` mode, a preset only applies its own framework/build wiring.
+- Imperative adapters remain local to each preset instance (`bun`, `node`, `fastify`, `hono`, `angularCli`).
+
+`client.autoMount` resolution order (when `client.module` is configured):
+
+1. query override `?universaClient.<namespaceId>=true|false`
+2. global query override `?universaClient=true|false`
+3. `localStorage` key `universa:client:<namespaceId>:enabled`
+4. preset default `client.autoMount`
+
+## 8) Public API coverage
+
+### Core bridge and preset APIs
+
+| API | Import path | Purpose |
+| --- | --- | --- |
+| `createUniversaPreset` | `universa-kit/preset` | Unified integration surface for tool packages. |
+| `createUniversaBridge` / `UniversaBridge` | `universa-kit` | Direct bridge instance control and attachment. |
+| `startStandaloneUniversaBridgeServer` | `universa-kit` | Standalone bridge server for tooling/tests. |
+
+### Client SDK and runtime-context helpers
+
+| API | Import path | Purpose |
+| --- | --- | --- |
+| `createUniversaClient` / `UniversaClientError` | `universa-kit/client` | Typed health/state/runtime/event client. |
+| `createClientRuntimeContext` | `universa-kit/client-runtime` | Create normalized namespace runtime context. |
+| `registerClientRuntimeContext` / `registerClientRuntimeContexts` | `universa-kit/client-runtime` | Register module-to-context mappings. |
+| `getClientRuntimeContexts` / `resolveClientRuntimeContext` | `universa-kit/client-runtime` | Read/resolve runtime contexts. |
+| `resolveClientAutoMount` | `universa-kit/client-runtime` | Evaluate effective auto-mount from query/storage/defaults. |
+
+### Framework adapters
+
+| API | Import path |
+| --- | --- |
+| `createUniversaVitePlugin` | `universa-kit/vite` |
+| `withUniversaNext` | `universa-kit/next` |
+| `createUniversaAstroIntegration` | `universa-kit/astro` |
+| `createUniversaNuxtModule` | `universa-kit/nuxt` |
+| `startUniversaAngularCliBridge` | `universa-kit/angular/cli` |
+| `createUniversaAngularCliProxyConfig` | `universa-kit/angular/cli` |
+| `withUniversaAngularCliProxyConfig` | `universa-kit/angular/cli` |
+
+### Server adapters
+
+| API | Import path |
+| --- | --- |
+| `attachUniversaToBunServe` | `universa-kit/bun` |
+| `withUniversaBunServeFetch` | `universa-kit/bun` |
+| `withUniversaBunServeWebSocketHandlers` | `universa-kit/bun` |
+| `attachUniversaToNodeServer` | `universa-kit/node` |
+| `attachUniversaToFastify` | `universa-kit/fastify` |
+| `attachUniversaToHonoNodeServer` | `universa-kit/hono` |
+
+### Build adapters and lifecycle helpers
+
+| API | Import path |
+| --- | --- |
+| `withUniversaWebpackDevServer` | `universa-kit/webpack` |
+| `withUniversaRsbuild` | `universa-kit/rsbuild` |
+| `withUniversaRspack` | `universa-kit/rspack` |
+| `createWebpackBridgeLifecycle` | `universa-kit/webpack` |
+| `createRsbuildBridgeLifecycle` | `universa-kit/rsbuild` |
+| `createRspackBridgeLifecycle` | `universa-kit/rspack` |
+| `createNodeBridgeLifecycle` | `universa-kit/node` |
+| `createHonoBridgeLifecycle` | `universa-kit/hono` |
+
+### Runtime helper and protocol constants
+
+| API | Import path |
+| --- | --- |
+| `RuntimeHelper` | `universa-kit` |
+| `UNIVERSA_PROTOCOL_VERSION` | `universa-kit` |
+| `UNIVERSA_WS_SUBPROTOCOL` | `universa-kit` |
+
+For the full public export list (including types), use `src/index.ts` as the source of truth.
+
+## 9) Adapter-specific notes (when presets are not your integration surface)
 
 If you expose framework-specific APIs instead of a preset, keep these behaviors documented for users.
 
@@ -211,7 +290,6 @@ export default {
   }),
 };
 ```
-
 
 ### Fastify integration
 

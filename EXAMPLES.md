@@ -67,6 +67,8 @@ bun run examples --no-open
 bun run examples react nextjs --no-open
 ```
 
+The examples runner assigns and passes `--port` automatically. Example app configs should not hard-code ports.
+
 ## Verify bridge wiring
 
 ```bash

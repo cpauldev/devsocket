@@ -109,7 +109,8 @@ Subprotocol behavior:
 
 - If `Sec-WebSocket-Protocol` is supplied, offered values must include `universa.v1+json`.
 - Unsupported offered protocol list is rejected with `426`.
-- On success, the negotiated protocol is `universa.v1+json`.
+- If the header is supplied and accepted, the negotiated protocol is `universa.v1+json`.
+- If the header is omitted, the connection may still be accepted without negotiated subprotocol.
 
 Event union:
 
@@ -161,3 +162,8 @@ Guarantees:
 - Multi-value `Set-Cookie` forwarding
 - Upstream 5xx emits a `runtime-error` event
 - Upstream status/headers/body pass through unchanged (including non-2xx)
+
+Required unavailable-runtime behavior:
+
+- HTTP status: `503`
+- `error.code = "runtime_unavailable"`

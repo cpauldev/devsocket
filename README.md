@@ -33,6 +33,7 @@ UniversaKit is a framework-agnostic bridge for local developer tools. It mounts 
 - [Usage examples](#usage-examples)
 - [Architecture overview](#architecture-overview)
 - [Design caveats](#design-caveats)
+- [Compatibility](#compatibility)
 - [Additional docs](#additional-docs)
 
 ## Who is this for?
@@ -66,7 +67,7 @@ Framework dev servers expose different middleware/plugin APIs, so local tooling 
 ## What it provides
 
 - same-origin bridge endpoints under `/__universa/*`
-- runtime lifecycle control (`start`, `restart`, `stop`) when `command` is configured
+- runtime lifecycle control (`start`/`restart` require `command`; `stop` is idempotent)
 - runtime status and capability reporting for UIs/automation
 - websocket event stream with protocol versioning
 - `/api/*` passthrough proxy from host origin to runtime origin
@@ -142,6 +143,8 @@ export default defineConfig({
 - `withUniversa*`: wrap and return config.
 - `attachUniversaTo*`: attach to an existing server.
 - `startUniversa*`: start helper/standalone utilities.
+
+For expanded API coverage (including lifecycle helpers, runtime-context utilities, and adapter-specific helper exports), see `INTEGRATION_GUIDE.md`.
 
 ## Configuration
 
@@ -276,9 +279,14 @@ For implementation details, see `ARCHITECTURE.md`.
 - `bridgePathPrefix` is normalized under `/__universa`.
 - Package is ESM-only (`"type": "module"`).
 
+## Compatibility
+
+- Runtime targets: Node.js and Bun.
+- Package format: ESM-only (`"type": "module"`).
+
 ## Additional docs
 
-- [`INTEGRATION_GUIDE.md`](INTEGRATION_GUIDE.md): end-to-end guide for tool authors.
+- [`INTEGRATION_GUIDE.md`](INTEGRATION_GUIDE.md): end-to-end guide for tool authors, adapter cookbook, and expanded API coverage.
 - [`PROTOCOL.md`](PROTOCOL.md): normative bridge contract.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): internal architecture.
 - [`EXAMPLES.md`](EXAMPLES.md): workspace example setup and verification.
