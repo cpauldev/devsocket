@@ -5,6 +5,11 @@ on:
     tags:
       - "v*.*.*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release (for example: v0.1.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -23,6 +28,32 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Resolve release tag metadata
+        id: release_meta
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            TAG_NAME="${{ github.event.inputs.tag }}"
+          else
+            TAG_NAME="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag format: $TAG_NAME"
+            echo "Expected format: v<major>.<minor>.<patch>"
+            exit 1
+          fi
+
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "tag_version=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout release tag commit (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          git checkout "refs/tags/${{ steps.release_meta.outputs.tag_name }}"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -62,7 +93,7 @@ jobs:
       - name: Verify tag matches package version
         run: |
           set -euo pipefail
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          TAG_VERSION="${{ steps.release_meta.outputs.tag_version }}"
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
 
           if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
@@ -117,5 +148,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.release_meta.outputs.tag_name }}
           generate_release_notes: true
           files: "*.tgz"
