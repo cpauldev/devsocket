@@ -1,10 +1,10 @@
 import type { RuntimeHelperOptions } from "../runtime/runtime-helper.js";
 import type { UniversaBridgeInstance } from "../types.js";
 import {
-  BRIDGE_PREFIX_DEFAULT,
   DEFAULT_FALLBACK_COMMAND,
   WS_HEARTBEAT_INTERVAL_MS_DEFAULT,
 } from "./constants.js";
+import { normalizeBridgePathPrefix } from "./prefix.js";
 
 export interface UniversaBridgeOptions extends RuntimeHelperOptions {
   autoStart?: boolean;
@@ -38,12 +38,12 @@ export function resolveBridgeOptions(
   options: UniversaBridgeOptions,
 ): ResolvedBridgeOptions {
   return {
+    ...options,
     autoStart: options.autoStart ?? true,
-    bridgePathPrefix: options.bridgePathPrefix ?? BRIDGE_PREFIX_DEFAULT,
+    bridgePathPrefix: normalizeBridgePathPrefix(options.bridgePathPrefix),
     fallbackCommand: options.fallbackCommand ?? DEFAULT_FALLBACK_COMMAND,
     eventHeartbeatIntervalMs:
       options.eventHeartbeatIntervalMs ?? WS_HEARTBEAT_INTERVAL_MS_DEFAULT,
     proxyRuntimeWebSocket: options.proxyRuntimeWebSocket ?? true,
-    ...options,
   };
 }

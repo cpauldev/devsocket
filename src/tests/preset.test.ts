@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
 import { UNIVERSA_NEXT_BRIDGE_GLOBAL_KEY } from "../adapters/shared/adapter-utils.js";
-import { createUniversaToolPreset } from "../preset.js";
+import { createUniversaPreset } from "../preset.js";
 
 type StandaloneBridgeLike = {
   baseUrl: string;
@@ -12,6 +12,11 @@ type StandaloneBridgeLike = {
 const bridgeGlobal = globalThis as typeof globalThis & {
   [key: string]: unknown;
 };
+const registryGlobal = globalThis as typeof globalThis & {
+  [key: symbol]: unknown;
+};
+const registrySymbol = Symbol.for("universa.preset.registry");
+const frameworkActivationSymbol = Symbol.for("universa.framework.activation");
 const createdKeys = new Set<string>();
 
 function seedStandaloneBridge(key: string, baseUrl: string): void {
@@ -51,11 +56,16 @@ async function clearSeededStandaloneBridges(): Promise<void> {
 
 afterEach(async () => {
   await clearSeededStandaloneBridges();
+  delete registryGlobal[registrySymbol];
+  delete registryGlobal[frameworkActivationSymbol];
+  delete process.env.NEXT_PUBLIC_UNIVERSA_CLIENT_CONTEXTS;
 });
 
-describe("createUniversaToolPreset", () => {
+describe("createUniversaPreset", () => {
   it("exposes all adapter surfaces from one preset object", () => {
-    const preset = createUniversaToolPreset();
+    const preset = createUniversaPreset({
+      identity: { packageName: "@tests/surfaces" },
+    });
 
     expect(typeof preset.vite).toBe("function");
     expect(typeof preset.next).toBe("function");
@@ -82,10 +92,11 @@ describe("createUniversaToolPreset", () => {
     seedStandaloneBridge(nextBridgeKey, "http://127.0.0.1:40101");
     seedStandaloneBridge(angularBridgeKey, "http://127.0.0.1:40102");
 
-    const preset = createUniversaToolPreset({
-      rewriteSource: "/acme/:path*",
-      nextBridgeGlobalKey: nextBridgeKey,
-      bridgePathPrefix: "/__acme",
+    const preset = createUniversaPreset({
+      identity: { packageName: "@tests/base-options" },
+      unsafeOverrides: {
+        nextBridgeGlobalKey: nextBridgeKey,
+      },
     });
 
     const wrappedNextConfig = preset.next({
@@ -97,22 +108,23 @@ describe("createUniversaToolPreset", () => {
     }
 
     expect(rewrites.beforeFiles[0]).toEqual({
-      source: "/acme/:path*",
-      destination: "http://127.0.0.1:40101/acme/:path*",
+      source: "/__universa/tests-base-options/:path*",
+      destination:
+        "http://127.0.0.1:40101/__universa/tests-base-options/:path*",
     });
 
     const proxyConfig = await preset.angularCli.createProxyConfig({
       angularCliBridgeGlobalKey: angularBridgeKey,
     });
     expect(proxyConfig).toEqual({
-      "/__acme": {
+      "/__universa/tests-base-options": {
         target: "http://127.0.0.1:40102",
         secure: false,
         changeOrigin: false,
         ws: true,
         logLevel: "warn",
       },
-      "/__acme/**": {
+      "/__universa/tests-base-options/**": {
         target: "http://127.0.0.1:40102",
         secure: false,
         changeOrigin: false,
@@ -128,9 +140,11 @@ describe("createUniversaToolPreset", () => {
     seedStandaloneBridge(baseBridgeKey, "http://127.0.0.1:40201");
     seedStandaloneBridge(overrideBridgeKey, "http://127.0.0.1:40202");
 
-    const preset = createUniversaToolPreset({
-      rewriteSource: "/base/:path*",
-      nextBridgeGlobalKey: baseBridgeKey,
+    const preset = createUniversaPreset({
+      identity: { packageName: "@tests/per-call" },
+      unsafeOverrides: {
+        nextBridgeGlobalKey: baseBridgeKey,
+      },
     });
 
     const wrappedNextConfig = preset.next(
@@ -148,8 +162,8 @@ describe("createUniversaToolPreset", () => {
     }
 
     expect(rewrites.beforeFiles[0]).toEqual({
-      source: "/override/:path*",
-      destination: "http://127.0.0.1:40202/override/:path*",
+      source: "/__universa/tests-per-call/:path*",
+      destination: "http://127.0.0.1:40202/__universa/tests-per-call/:path*",
     });
   });
 });

@@ -1,4 +1,4 @@
-import type { DashboardFrameworkId } from "demo/dashboard";
+import type { DashboardFrameworkId } from "example/dashboard";
 
 export interface FrameworkVisual {
   id: DashboardFrameworkId;

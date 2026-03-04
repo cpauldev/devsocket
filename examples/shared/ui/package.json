@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "demo": "workspace:*",
+    "example": "workspace:*",
     "lucide": "^0.575.0",
     "universa-ui": "file:../../../../universa-ui"
   },

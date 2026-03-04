@@ -9,12 +9,13 @@ import type {
 
 const UNIVERSA_WS_SUBPROTOCOL = "universa.v1+json";
 
-export interface DemoApi {
+export interface ExampleApi {
   getBridgeState: () => Promise<UniversaBridgeState>;
   getRuntimeStatus: () => Promise<UniversaRuntimeStatus>;
   startRuntime: () => Promise<OverlayActionResult>;
   restartRuntime: () => Promise<OverlayActionResult>;
   stopRuntime: () => Promise<OverlayActionResult>;
+  openFile: (path: string, line?: number) => Promise<OverlayActionResult>;
   getFileTree: () => Promise<FileTreeNode[]>;
   getFileMetadata: (path: string) => Promise<FileMetadata>;
 }
@@ -146,7 +147,7 @@ function toRuntimeApiRoute(path: string): string {
   return `${BRIDGE_BASE_PATH}/api${path}`;
 }
 
-export function createDemoApi(baseUrl?: string): DemoApi {
+export function createExampleApi(baseUrl?: string): ExampleApi {
   const normalizedBaseUrl = resolveDevServerBaseUrl(baseUrl);
 
   return {
@@ -183,6 +184,18 @@ export function createDemoApi(baseUrl?: string): DemoApi {
         normalizedBaseUrl,
         toBridgeRoute("/runtime/stop"),
         { method: "POST", body: JSON.stringify({}) },
+      );
+      return asActionResult(data);
+    },
+    async openFile(path: string, line?: number) {
+      const params = new URLSearchParams();
+      params.set("path", path);
+      if (typeof line === "number" && Number.isFinite(line)) {
+        params.set("line", String(line));
+      }
+      const data = await request<Record<string, unknown>>(
+        normalizedBaseUrl,
+        toRuntimeApiRoute(`/open-file?${params.toString()}`),
       );
       return asActionResult(data);
     },

@@ -9,17 +9,17 @@ import "universa-ui/styles.css";
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Demo - Astro</title>
+    <title>Example - Astro</title>
   </head>
   <body>
-    <div id="demo-root"></div>
+    <div id="example-root"></div>
 
     <script>
       import { mountVanillaDashboard } from "example-ui/vanilla-dashboard";
 
-      const root = document.getElementById("demo-root");
+      const root = document.getElementById("example-root");
       if (!root) {
-        throw new Error("Missing #demo-root");
+        throw new Error("Missing #example-root");
       }
 
       const cleanup = mountVanillaDashboard({

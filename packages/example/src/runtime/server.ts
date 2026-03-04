@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
-import { extname, join, relative } from "path";
+import { extname, join, normalize, relative, resolve, sep } from "path";
 
 const PORT = Number(
-  process.env[process.env.DEMO_RUNTIME_PORT ?? "DEMO_RUNTIME_PORT"] ??
-    process.env.DEMO_RUNTIME_PORT ??
+  process.env[process.env.EXAMPLE_RUNTIME_PORT ?? "EXAMPLE_RUNTIME_PORT"] ??
+    process.env.EXAMPLE_RUNTIME_PORT ??
     0,
 );
 
@@ -21,6 +21,7 @@ const EXCLUDE_DIRS = new Set([
   ".netlify",
   "coverage",
 ]);
+const PROJECT_ROOT = resolve(process.cwd());
 
 export interface FileTreeNode {
   name: string;
@@ -76,6 +77,58 @@ function buildFileTree(dirPath: string, rootPath: string): FileTreeNode[] {
   });
 }
 
+function resolveSafePath(relPath: string): string | null {
+  const normalized = normalize(relPath).replace(/^([/\\])+/, "");
+  const absolute = resolve(PROJECT_ROOT, normalized);
+  if (!absolute.startsWith(PROJECT_ROOT + sep) && absolute !== PROJECT_ROOT) {
+    return null;
+  }
+  return absolute;
+}
+
+function parseLine(line: string | null): number | null {
+  if (!line) return 0;
+  const parsed = Number.parseInt(line, 10);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1_000_000) {
+    return null;
+  }
+  return parsed;
+}
+
+function spawnBestEffort(cmd: string[]): boolean {
+  try {
+    Bun.spawn({
+      cmd,
+      stdin: "ignore",
+      stdout: "ignore",
+      stderr: "ignore",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function openFileInEditor(safePath: string, lineNumber = 0): void {
+  const lineArg = lineNumber > 0 ? `${safePath}:${lineNumber}` : safePath;
+
+  if (spawnBestEffort(["code", "--goto", lineArg])) {
+    return;
+  }
+
+  if (process.platform === "win32") {
+    spawnBestEffort(["cmd", "/c", "start", "", safePath]);
+    return;
+  }
+
+  if (process.platform === "darwin") {
+    spawnBestEffort(["open", safePath]);
+    return;
+  }
+
+  spawnBestEffort(["xdg-open", safePath]);
+}
+
 function corsHeaders(): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": "*",
@@ -109,14 +162,17 @@ const server = Bun.serve({
     }
 
     if (pathname === "/api/files") {
-      const cwd = process.cwd();
-      const tree = buildFileTree(cwd, cwd);
+      const tree = buildFileTree(PROJECT_ROOT, PROJECT_ROOT);
       return json(tree);
     }
 
     if (pathname.startsWith("/api/files/")) {
       const filePath = decodeURIComponent(pathname.slice("/api/files/".length));
-      const fullPath = join(process.cwd(), filePath);
+      const fullPath = resolveSafePath(filePath);
+
+      if (!fullPath) {
+        return json({ error: "Access denied" }, 403);
+      }
 
       if (!existsSync(fullPath)) {
         return json({ error: "Not found" }, 404);
@@ -178,8 +234,32 @@ const server = Bun.serve({
       return json(meta);
     }
 
+    if (pathname === "/api/open-file") {
+      const filePath = url.searchParams.get("path");
+      if (!filePath) {
+        return json({ error: "Missing path parameter" }, 400);
+      }
+
+      const safePath = resolveSafePath(filePath);
+      if (!safePath) {
+        return json({ error: "Access denied" }, 403);
+      }
+
+      if (!existsSync(safePath)) {
+        return json({ error: "Not found" }, 404);
+      }
+
+      const lineNumber = parseLine(url.searchParams.get("line"));
+      if (lineNumber === null) {
+        return json({ error: "Invalid line number" }, 400);
+      }
+
+      openFileInEditor(safePath, lineNumber);
+      return json({ success: true });
+    }
+
     return json({ error: "Not found" }, 404);
   },
 });
 
-console.warn(`Demo runtime listening on port ${server.port}`);
+console.warn(`Example runtime listening on port ${server.port}`);

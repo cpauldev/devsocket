@@ -1,5 +1,6 @@
 import type { UniversaBridgeState } from "universa-kit";
 
+import { BRIDGE_BASE_PATH } from "../overlay/constants.js";
 import {
   formatBytes,
   formatDate,
@@ -23,7 +24,7 @@ import type {
   DashboardWebSocketSnapshot,
 } from "./types.js";
 
-const DEFAULT_FALLBACK_COMMAND = "demo dev";
+const DEFAULT_FALLBACK_COMMAND = "example dev";
 const DEFAULT_FAILURE_THRESHOLD = 1;
 const NO_ERROR_MESSAGE = "Failed to reach bridge state";
 
@@ -150,6 +151,18 @@ function asBadgeCell(
   variant: DashboardBadgeVariant,
 ): DashboardTableCell {
   return { kind: "badge", text, variant };
+}
+
+function asLinkCell(
+  text: string,
+  href: string,
+  tone: "default" | "muted" | "code" = "default",
+): DashboardTableCell {
+  return { kind: "link", text, href, tone };
+}
+
+function toBridgeEndpoint(path: string): string {
+  return `${BRIDGE_BASE_PATH}${path}`;
 }
 
 function resolveTransportBadgeVariant(
@@ -312,10 +325,12 @@ export function resolveDashboardStatusSummary(
 function resolveActionStates(
   phase: string | null,
   actionLoading: DashboardActionId | null,
+  hasRuntimeControl: boolean,
 ): DashboardActionState[] {
   const isTransitioning =
     actionLoading !== null || phase === "starting" || phase === "stopping";
   const isRunning = phase === "running";
+  const controlsDisabled = !hasRuntimeControl;
 
   return [
     {
@@ -323,7 +338,7 @@ function resolveActionStates(
       label: "Start",
       loadingLabel: "Starting...",
       icon: "play",
-      disabled: isRunning || isTransitioning,
+      disabled: controlsDisabled || isRunning || isTransitioning,
       loading: actionLoading === "start",
     },
     {
@@ -331,7 +346,7 @@ function resolveActionStates(
       label: "Restart",
       loadingLabel: "Restarting...",
       icon: "rotate-ccw",
-      disabled: !isRunning || isTransitioning,
+      disabled: controlsDisabled || !isRunning || isTransitioning,
       loading: actionLoading === "restart",
     },
     {
@@ -339,7 +354,7 @@ function resolveActionStates(
       label: "Stop",
       loadingLabel: "Stopping...",
       icon: "square",
-      disabled: !isRunning || isTransitioning,
+      disabled: controlsDisabled || !isRunning || isTransitioning,
       loading: actionLoading === "stop",
     },
   ];
@@ -364,7 +379,11 @@ export function buildRuntimeSections(input: {
   const controls: DashboardControlsSection = {
     id: "controls",
     title: "Controls",
-    actions: resolveActionStates(phase, actionLoading),
+    actions: resolveActionStates(
+      phase,
+      actionLoading,
+      capabilities?.hasRuntimeControl ?? false,
+    ),
     ...(live.errorMessage ? { message: live.errorMessage } : {}),
   };
 
@@ -407,6 +426,30 @@ export function buildRuntimeSections(input: {
       asTextCell(formatLastUpdated(live.lastUpdatedAt, now), "muted"),
     );
   }
+  pushRow(
+    bridgeRows,
+    "endpoint-health",
+    "Health API",
+    asLinkCell("health", toBridgeEndpoint("/health"), "code"),
+  );
+  pushRow(
+    bridgeRows,
+    "endpoint-state",
+    "State API",
+    asLinkCell("state", toBridgeEndpoint("/state"), "code"),
+  );
+  pushRow(
+    bridgeRows,
+    "endpoint-runtime",
+    "Runtime API",
+    asLinkCell("runtime/status", toBridgeEndpoint("/runtime/status"), "code"),
+  );
+  pushRow(
+    bridgeRows,
+    "endpoint-events",
+    "Events stream",
+    asTextCell(`${toBridgeEndpoint("/events")}`, "code"),
+  );
   if (bridgeState?.error) {
     pushRow(bridgeRows, "error", "Error", asTextCell(bridgeState.error));
   }

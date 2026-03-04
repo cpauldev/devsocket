@@ -1,20 +1,47 @@
 import { isEventsUpgradePath } from "../../bridge/router.js";
 import {
+  type BridgeLifecycle,
   type MiddlewareAdapterServer,
   type UniversaAdapterOptions,
   appendPlugin,
+  buildClientRuntimeContextRegistration,
   createBridgeLifecycle,
   resolveAdapterOptions,
 } from "../shared/adapter-utils.js";
 
 export type UniversaNuxtOptions = UniversaAdapterOptions;
+export type UniversaNuxtModule = ((
+  moduleOptions?: unknown,
+  nuxt?: unknown,
+) => void) & {
+  meta: {
+    name: string;
+    configKey: string;
+  };
+};
 
-const OVERLAY_VIRTUAL_ID = "universa-kit:overlay-init";
-const RESOLVED_OVERLAY_VIRTUAL_ID = `\0${OVERLAY_VIRTUAL_ID}`;
+function createClientVirtualIds(namespaceId: string): {
+  virtualId: string;
+  resolvedVirtualId: string;
+} {
+  const virtualId = `universa-kit:client-init:${namespaceId}`;
+  return {
+    virtualId,
+    resolvedVirtualId: `\0${virtualId}`,
+  };
+}
 
-export function createUniversaNuxtModule(options: UniversaNuxtOptions = {}) {
+export function createUniversaNuxtModule(
+  options: UniversaNuxtOptions = {},
+): UniversaNuxtModule {
   const resolvedOptions = resolveAdapterOptions(options);
-  const overlayModule = resolvedOptions.overlayModule;
+  const clientModule =
+    resolvedOptions.clientEnabled === false
+      ? undefined
+      : resolvedOptions.clientModule;
+  const virtualIds = createClientVirtualIds(
+    resolvedOptions.namespaceId ?? resolvedOptions.adapterName,
+  );
   const lifecycle = createBridgeLifecycle(resolvedOptions);
   let lastViteServer: MiddlewareAdapterServer | null = null;
 
@@ -23,15 +50,20 @@ export function createUniversaNuxtModule(options: UniversaNuxtOptions = {}) {
     enforce: "pre" as const,
 
     resolveId(id: string) {
-      if (overlayModule && id === OVERLAY_VIRTUAL_ID) {
-        return RESOLVED_OVERLAY_VIRTUAL_ID;
+      if (clientModule && id === virtualIds.virtualId) {
+        return virtualIds.resolvedVirtualId;
       }
     },
 
     load(id: string) {
-      if (overlayModule && id === RESOLVED_OVERLAY_VIRTUAL_ID) {
+      if (clientModule && id === virtualIds.resolvedVirtualId) {
+        const clientContext = buildClientRuntimeContextRegistration(
+          clientModule,
+          resolvedOptions.clientRuntimeContext,
+        );
         return [
-          `import ${JSON.stringify(overlayModule)};`,
+          ...clientContext,
+          `import ${JSON.stringify(clientModule)};`,
           `if (import.meta.hot) { import.meta.hot.accept(() => {}); }`,
         ].join("\n");
       }
@@ -40,11 +72,11 @@ export function createUniversaNuxtModule(options: UniversaNuxtOptions = {}) {
     transformIndexHtml: {
       order: "pre" as const,
       handler(_html: string, ctx: { server?: unknown }) {
-        if (!overlayModule || !ctx.server) return [];
+        if (!clientModule || !ctx.server) return [];
         return [
           {
             tag: "script",
-            attrs: { type: "module", src: `/@id/${OVERLAY_VIRTUAL_ID}` },
+            attrs: { type: "module", src: `/@id/${virtualIds.virtualId}` },
             injectTo: "head-prepend" as const,
           },
         ];
@@ -59,7 +91,7 @@ export function createUniversaNuxtModule(options: UniversaNuxtOptions = {}) {
 
   const meta = {
     name: resolvedOptions.adapterName,
-    configKey: "bridgeSocket",
+    configKey: "universa",
   };
 
   function hasPluginWithName(
@@ -74,7 +106,11 @@ export function createUniversaNuxtModule(options: UniversaNuxtOptions = {}) {
     });
   }
 
-  function setup(_moduleOptions: unknown, nuxt: Record<string, unknown>) {
+  function setup(_moduleOptions: unknown, nuxtInput: unknown) {
+    const nuxt = (nuxtInput ?? {}) as {
+      options?: unknown;
+      hook?: unknown;
+    };
     const nuxtOptions = (nuxt.options || {}) as {
       dev?: boolean;
       build?: { templates?: unknown[] };
@@ -83,9 +119,9 @@ export function createUniversaNuxtModule(options: UniversaNuxtOptions = {}) {
     if (!nuxtOptions.dev) return;
 
     // Nuxt does not reliably run transformIndexHtml on every navigation path.
-    // Register a client plugin to ensure the overlay module is always imported.
-    if (overlayModule) {
-      const templateFilename = `${resolvedOptions.adapterName}-overlay.client.mjs`;
+    // Register a client plugin to ensure the client module is always imported.
+    if (clientModule) {
+      const templateFilename = `${resolvedOptions.adapterName}-client.client.mjs`;
       const templatePath = `#build/${templateFilename}`;
       const buildTemplates = (nuxtOptions.build ??= {}).templates ?? [];
       (nuxtOptions.build as { templates: unknown[] }).templates =
@@ -98,11 +134,15 @@ export function createUniversaNuxtModule(options: UniversaNuxtOptions = {}) {
       });
 
       if (!hasTemplate) {
+        const registerContext = buildClientRuntimeContextRegistration(
+          clientModule,
+          resolvedOptions.clientRuntimeContext,
+        );
         buildTemplates.push({
           filename: templateFilename,
           write: true,
           getContents: () =>
-            `import ${JSON.stringify(overlayModule)};\nexport default () => {};`,
+            `${registerContext.join("\n")}\nimport ${JSON.stringify(clientModule)};\nexport default () => {};`,
         });
       }
 
@@ -137,49 +177,77 @@ export function createUniversaNuxtModule(options: UniversaNuxtOptions = {}) {
         event: "upgrade" | "close",
       ) => ((...args: unknown[]) => void)[];
       removeAllListeners: (event: "upgrade" | "close") => void;
-      __bridgeSocketAttached?: boolean;
+      __universaBridgeDispatcherInstalled?: boolean;
+      __universaBridgeCloseHookInstalled?: boolean;
+      __universaBridgeInitialUpgradeListeners?: ((
+        ...args: unknown[]
+      ) => void)[];
+      __universaBridgeUpgradeSources?: Map<
+        string,
+        () => ReturnType<BridgeLifecycle["getBridge"]>
+      >;
+      __universaBridgeTeardowns?: Map<string, () => Promise<void>>;
     }) => {
-      if (listenerServer.__bridgeSocketAttached) return;
-      listenerServer.__bridgeSocketAttached = true;
+      const bridgePathPrefix =
+        resolvedOptions.bridgePathPrefix ?? "/__universa";
+      const upgradeSources = (listenerServer.__universaBridgeUpgradeSources ??=
+        new Map());
+      const teardownHandlers = (listenerServer.__universaBridgeTeardowns ??=
+        new Map());
+
+      upgradeSources.set(bridgePathPrefix, () => lifecycle.getBridge());
+      teardownHandlers.set(bridgePathPrefix, () => lifecycle.teardown());
 
       if (lastViteServer) {
         void lifecycle.setup(lastViteServer);
       }
 
-      const existingUpgradeListeners = listenerServer.listeners("upgrade");
-      listenerServer.removeAllListeners("upgrade");
-      listenerServer.on("upgrade", (...args: unknown[]) => {
-        const [req, socket, head] = args as [
-          import("http").IncomingMessage,
-          import("stream").Duplex,
-          Buffer,
-        ];
+      if (!listenerServer.__universaBridgeDispatcherInstalled) {
+        listenerServer.__universaBridgeDispatcherInstalled = true;
+        listenerServer.__universaBridgeInitialUpgradeListeners =
+          listenerServer.listeners("upgrade");
+        listenerServer.removeAllListeners("upgrade");
 
-        if (
-          isEventsUpgradePath(
-            req.url || "/",
-            resolvedOptions.bridgePathPrefix ?? "/__universa",
-          )
-        ) {
-          const bridge = lifecycle.getBridge();
-          if (!bridge) {
-            socket.destroy();
-            return;
+        listenerServer.on("upgrade", (...args: unknown[]) => {
+          const [req, socket, head] = args as [
+            import("http").IncomingMessage,
+            import("stream").Duplex,
+            Buffer,
+          ];
+          const requestPath = req.url || "/";
+
+          const sources = listenerServer.__universaBridgeUpgradeSources;
+          if (sources) {
+            for (const [prefix, getBridge] of sources.entries()) {
+              if (!isEventsUpgradePath(requestPath, prefix)) continue;
+              const bridge = getBridge();
+              if (!bridge) {
+                socket.destroy();
+                return;
+              }
+              bridge.handleUpgrade(req, socket, head);
+              return;
+            }
           }
-          bridge.handleUpgrade(req, socket, head);
-          return;
-        }
 
-        for (const listener of existingUpgradeListeners) {
-          listener(req, socket, head);
-        }
-      });
+          for (const listener of listenerServer.__universaBridgeInitialUpgradeListeners ??
+            []) {
+            listener(req, socket, head);
+          }
+        });
+      }
 
-      listenerServer.on("close", () => {
-        void lifecycle.teardown();
-      });
+      if (!listenerServer.__universaBridgeCloseHookInstalled) {
+        listenerServer.__universaBridgeCloseHookInstalled = true;
+        listenerServer.on("close", () => {
+          const teardowns = [
+            ...(listenerServer.__universaBridgeTeardowns?.values() ?? []),
+          ];
+          void Promise.all(teardowns.map((teardown) => teardown()));
+        });
+      }
     }) as (...args: unknown[]) => void);
   }
 
-  return Object.assign(setup, { meta });
+  return Object.assign(setup, { meta }) as UniversaNuxtModule;
 }

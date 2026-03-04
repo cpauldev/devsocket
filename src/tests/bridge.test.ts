@@ -62,7 +62,7 @@ describe("UniversaBridge", () => {
 
     const state = bridge.getState();
     expect(state.capabilities.hasRuntimeControl).toBe(true);
-    expect(state.capabilities.commandHost).toBe("helper");
+    expect(state.capabilities.commandHost).toBe("hybrid");
     expect(state.capabilities.canStartRuntime).toBe(true);
     expect(state.capabilities.canRestartRuntime).toBe(true);
     expect(state.capabilities.canStopRuntime).toBe(true);

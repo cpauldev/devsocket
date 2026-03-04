@@ -25,6 +25,11 @@ Default bridge prefix: `/__universa`
 
 All routes below are defined relative to that prefix.
 
+Effective prefix normalization:
+
+- Universa normalizes custom prefixes to remain rooted at `/__universa`.
+- Preset integrations typically use a namespaced prefix (for example `/__universa/<namespaceId>`).
+
 ## HTTP Routes
 
 - `GET /health`

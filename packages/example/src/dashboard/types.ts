@@ -1,6 +1,6 @@
 import type { UniversaBridgeState } from "universa-kit";
 
-import type { DemoApi } from "../overlay/api.js";
+import type { ExampleApi } from "../overlay/api.js";
 import type { FileMetadata, FileTreeNode } from "../overlay/types.js";
 
 export type DashboardTransportState =
@@ -52,6 +52,12 @@ export type DashboardTableCell =
   | {
       kind: "text";
       text: string;
+      tone?: "default" | "muted" | "code";
+    }
+  | {
+      kind: "link";
+      text: string;
+      href: string;
       tone?: "default" | "muted" | "code";
     }
   | {
@@ -169,7 +175,7 @@ export interface DashboardDiscoveryConfig {
 }
 
 export interface DashboardControllerOptions {
-  api?: DemoApi;
+  api?: ExampleApi;
   baseUrl?: string;
   livePollIntervalMs?: number;
   loadFilesOnStart?: boolean;

@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "lucide-react": "^0.575.0",
-    "demo": "workspace:*",
+    "example": "workspace:*",
     "example-ui": "workspace:*",
     "next": "^16.1.6",
     "react": "^19.0.0",

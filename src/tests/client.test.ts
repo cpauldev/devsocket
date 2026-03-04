@@ -44,6 +44,23 @@ async function waitForEvent(
 }
 
 describe("universa-kit client", () => {
+  it("resolves namespaced bridge routes from namespaceId", async () => {
+    const server = await startStandaloneUniversaBridgeServer({
+      autoStart: false,
+      bridgePathPrefix: "/__universa/tests-client",
+    });
+    standaloneServers.add(server);
+
+    const client = createUniversaClient({
+      baseUrl: server.baseUrl,
+      namespaceId: "tests-client",
+    });
+    const health = await client.getHealth();
+
+    expect(health.ok).toBe(true);
+    expect(health.bridge).toBe(true);
+  });
+
   it("reads health and bridge state", async () => {
     const server = await startStandaloneUniversaBridgeServer({
       autoStart: false,

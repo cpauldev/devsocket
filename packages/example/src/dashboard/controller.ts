@@ -1,9 +1,9 @@
 import type { UniversaBridgeEvent } from "universa-kit";
 
 import {
-  type DemoApi,
+  type ExampleApi,
   type WebSocketBinding,
-  createDemoApi,
+  createExampleApi,
   createWebSocketBinding,
   getDevServerBaseUrlCandidates,
   resolveDevServerBaseUrl,
@@ -158,7 +158,7 @@ export function createDashboardController(
   let activeBaseUrl = usingExternalApi
     ? ""
     : baseUrlCandidates[0] || resolveDevServerBaseUrl(options.baseUrl);
-  let api: DemoApi = options.api ?? createDemoApi(activeBaseUrl);
+  let api: ExampleApi = options.api ?? createExampleApi(activeBaseUrl);
   const listeners = new Set<(state: DashboardControllerState) => void>();
   const livePollIntervalMs =
     options.livePollIntervalMs ?? DEFAULT_LIVE_POLL_INTERVAL_MS;
@@ -222,7 +222,7 @@ export function createDashboardController(
   const setActiveBaseUrl = (baseUrl: string) => {
     if (usingExternalApi || !baseUrl || baseUrl === activeBaseUrl) return;
     activeBaseUrl = baseUrl;
-    api = createDemoApi(activeBaseUrl);
+    api = createExampleApi(activeBaseUrl);
     if (started) {
       connectWebSocket();
     }

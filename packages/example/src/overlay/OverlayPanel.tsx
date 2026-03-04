@@ -1,11 +1,11 @@
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUpRight,
   CircleAlert,
   CircleCheck,
   CircleX,
   Cpu,
-  ExternalLink,
   File,
   FileCode2,
   FileJson2,
@@ -22,14 +22,19 @@ import {
 } from "lucide-react";
 import * as React from "react";
 
-import { OVERLAY_POSITIONS, TABS } from "./constants.js";
 import {
-  formatBytes,
-  formatDate,
-  formatPhase,
-  formatTransportState,
-  formatUptime,
-} from "./format.js";
+  type DashboardActionId,
+  type DashboardActionState,
+  type DashboardControlsSection,
+  type DashboardLiveState,
+  type DashboardTableCell,
+  type DashboardTableSection,
+  type DashboardTransportState,
+  type DashboardWebSocketSnapshot,
+  buildRuntimeSections,
+} from "../dashboard/index.js";
+import { OVERLAY_POSITIONS, TABS } from "./constants.js";
+import { formatBytes, formatDate } from "./format.js";
 import type {
   FileMetadata,
   OverlayAction,
@@ -43,6 +48,13 @@ import type {
 import { Badge } from "./ui/badge.js";
 import { Button } from "./ui/button.js";
 import { Checkbox } from "./ui/checkbox.js";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "./ui/empty.js";
 import { FileTree, filterFileTree } from "./ui/file-tree.js";
 import {
   InputGroup,
@@ -95,7 +107,7 @@ function resolveOverlaySeverity(state: OverlayState): OverlaySeverity {
 function resolveStatusCopy(state: OverlayState): StatusCopy {
   const severity = resolveOverlaySeverity(state);
   const fallbackCommand =
-    state.bridgeState?.capabilities?.fallbackCommand || "demo dev";
+    state.bridgeState?.capabilities?.fallbackCommand || "example dev";
 
   if (severity === "error") {
     if (state.transportState === "degraded") {
@@ -118,10 +130,16 @@ function resolveStatusCopy(state: OverlayState): StatusCopy {
 
   if (severity === "loading") {
     if (state.transportState === "bridge_detecting") {
-      return { title: "Detecting Bridge", detail: "Checking for demo bridge" };
+      return {
+        title: "Detecting Bridge",
+        detail: "Checking for example bridge",
+      };
     }
     if (state.transportState === "runtime_starting") {
-      return { title: "Starting Runtime", detail: "Booting the demo runtime" };
+      return {
+        title: "Starting Runtime",
+        detail: "Booting the example runtime",
+      };
     }
     return { title: state.loadingAction ?? "Working", detail: "Processing..." };
   }
@@ -133,7 +151,7 @@ function resolveStatusCopy(state: OverlayState): StatusCopy {
   if (state.bridgeState?.runtime.phase === "stopped") {
     return { title: "Stopped", detail: "Runtime is not running" };
   }
-  return { title: "Connected", detail: "Demo overlay active" };
+  return { title: "Connected", detail: "Example overlay active" };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -231,36 +249,126 @@ function SeverityIcon({ severity }: { severity: OverlaySeverity }) {
   );
 }
 
-type KvBadgeVariant = "success" | "error" | "warning" | "secondary" | "default";
+type KvBadgeVariant =
+  | "success"
+  | "error"
+  | "warning"
+  | "secondary"
+  | "default"
+  | "info";
 
-function resolveTransportBadgeVariant(transportState: string): KvBadgeVariant {
-  if (transportState === "connected") return "success";
+function resolveFilesEmptyMessage(state: OverlayState): string {
+  if (!state.hasBootstrapped) {
+    return "Connecting to bridge…";
+  }
+
+  if (state.transportState === "bridge_detecting") {
+    return "Detecting bridge connection…";
+  }
+
+  if (state.transportState === "runtime_starting") {
+    return "Runtime is starting. Files will appear when ready.";
+  }
+
   if (
-    transportState === "runtime_starting" ||
-    transportState === "bridge_detecting"
-  )
-    return "warning";
-  if (transportState === "degraded" || transportState === "disconnected")
-    return "error";
-  return "default";
+    state.transportState === "disconnected" ||
+    state.transportState === "degraded" ||
+    !state.connected
+  ) {
+    return state.errorMessage
+      ? `Connection unavailable: ${state.errorMessage}`
+      : "Connection unavailable. Files cannot be loaded.";
+  }
+
+  return "No files found.";
 }
 
-function resolveRuntimePhaseBadgeVariant(phase: string): KvBadgeVariant {
-  if (phase === "running") return "success";
-  if (phase === "starting" || phase === "stopping") return "warning";
-  if (phase === "error") return "error";
-  if (phase === "stopped") return "secondary";
-  return "default";
+function resolveDashboardActionLoading(
+  loadingAction: string | null,
+): DashboardActionId | null {
+  if (loadingAction === "Starting") return "start";
+  if (loadingAction === "Restarting") return "restart";
+  if (loadingAction === "Stopping") return "stop";
+  return null;
+}
+
+function toDashboardLiveState(state: OverlayState): DashboardLiveState {
+  return {
+    hasBootstrapped: state.hasBootstrapped,
+    connected: state.connected,
+    transportState: state.transportState as DashboardTransportState,
+    bridgeState: state.bridgeState,
+    errorMessage: state.errorMessage,
+    lastUpdatedAt: state.lastSuccessAt,
+    consecutiveFailures: 0,
+    fallbackCommand:
+      state.bridgeState?.capabilities?.fallbackCommand ?? "example dev",
+    protocolVersion: state.bridgeState?.protocolVersion ?? null,
+  };
+}
+
+function toDashboardWebSocketSnapshot(input: {
+  wsConnected: boolean;
+  wsOpenedAt: number | null;
+  wsFallbackMode: boolean;
+  wsConsecutiveFailures: number;
+}): DashboardWebSocketSnapshot {
+  return {
+    status: input.wsConnected ? "open" : "closed",
+    openedAt: input.wsOpenedAt,
+    mode: input.wsFallbackMode ? "polling" : "websocket",
+    failures: input.wsConsecutiveFailures,
+  };
+}
+
+function resolveToneClassName(
+  tone: "default" | "muted" | "code" | undefined,
+): string {
+  if (tone === "muted") {
+    return "break-words text-muted-foreground";
+  }
+  if (tone === "code") {
+    return "break-words font-mono text-[11px]";
+  }
+  return "break-words";
+}
+
+function toKvRowValueProps(value: DashboardTableCell): {
+  value: string;
+  badgeVariant?: KvBadgeVariant;
+  href?: string;
+  tone?: "default" | "muted" | "code";
+} {
+  if (value.kind === "badge") {
+    return { value: value.text, badgeVariant: value.variant };
+  }
+
+  if (value.kind === "link") {
+    return {
+      value: value.text,
+      href: value.href,
+      tone: value.tone,
+    };
+  }
+
+  return {
+    value: value.text,
+    tone: value.tone,
+  };
 }
 
 function KvRow({
   label,
   value,
   badgeVariant,
+  href,
+  tone,
 }: {
   label: string;
   value: string;
   badgeVariant?: KvBadgeVariant;
+  href?: string;
+  tone?: "default" | "muted" | "code";
 }) {
   return (
     <div className="overlay-kv-row text-xs leading-[1.35]">
@@ -269,8 +377,21 @@ function KvRow({
         <Badge variant={badgeVariant} size="sm" className="justify-self-start">
           {value || "n/a"}
         </Badge>
+      ) : href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer noopener"
+          className={cn(
+            "inline-flex min-w-0 items-center gap-1 text-primary hover:underline",
+            resolveToneClassName(tone),
+          )}
+        >
+          {value || "n/a"}
+          <ArrowUpRight aria-hidden="true" size={12} />
+        </a>
       ) : (
-        <span className="break-words">{value || "n/a"}</span>
+        <span className={resolveToneClassName(tone)}>{value || "n/a"}</span>
       )}
     </div>
   );
@@ -377,7 +498,7 @@ function Topbar({ severity, statusTitle }: TopbarProps) {
   return (
     <div className="overlay-header">
       <div className="overlay-header-title">
-        <span className="overlay-header-label">Demo</span>
+        <span className="overlay-header-label">Example</span>
       </div>
       <Badge
         variant={severityToBadgeVariant(severity)}
@@ -403,7 +524,7 @@ function Toolbar({
     <SidebarMenu
       className="overlay-toolbar"
       role="tablist"
-      aria-label="Demo overlay tabs"
+      aria-label="Example overlay tabs"
       aria-orientation="horizontal"
     >
       {TABS.map((tab) => (
@@ -432,7 +553,7 @@ function SidebarNav({
       <ScrollArea className="overlay-sidebar-scroll">
         <SidebarMenu
           className="overlay-nav-tabs"
-          aria-label="Demo overlay tabs"
+          aria-label="Example overlay tabs"
           role="tablist"
           aria-orientation="vertical"
         >
@@ -467,12 +588,14 @@ function WorkspaceSidebar({
   const filteredResult = q ? filterFileTree(state.fileTree, q) : null;
   const displayNodes = filteredResult?.nodes ?? state.fileTree;
   const forceExpand = filteredResult?.forceExpand;
+  const showFilterEmpty =
+    q.length > 0 && state.fileTree.length > 0 && displayNodes.length === 0;
 
   return (
     <aside className="overlay-sidebar overlay-sidebar--workspace">
       <nav
         className="overlay-nav-tabs overlay-nav-tabs--workspace"
-        aria-label="Demo overlay files navigation"
+        aria-label="Example overlay files navigation"
         role="tablist"
         aria-orientation="vertical"
       >
@@ -535,7 +658,11 @@ function WorkspaceSidebar({
             </p>
           ) : state.fileTree.length === 0 ? (
             <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-              No files found.
+              {resolveFilesEmptyMessage(state)}
+            </p>
+          ) : showFilterEmpty ? (
+            <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+              No files match your search.
             </p>
           ) : (
             <FileTree
@@ -555,23 +682,29 @@ function WorkspaceSidebar({
   );
 }
 
-function FileMetadataPanel({ meta }: { meta: FileMetadata }) {
+function FileMetadataPanel({
+  meta,
+  onOpenFile,
+}: {
+  meta: FileMetadata;
+  onOpenFile: (path: string) => void;
+}) {
   return (
     <div className="overlay-file-details">
-      <p className="flex items-center gap-1.5 break-all text-sm font-semibold">
-        <FileTypeIcon path={meta.path} />
-        {meta.name}
-      </p>
-      <Button
-        variant="outline"
-        className="justify-self-start"
-        onClick={() => {
-          window.open(`vscode://file/${meta.absolutePath}`, "_self");
-        }}
-      >
-        <ExternalLink aria-hidden="true" size={14} />
-        Open in editor
-      </Button>
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <p className="flex min-w-0 items-center gap-1.5 break-all text-sm font-semibold">
+          <FileTypeIcon path={meta.path} />
+          {meta.name}
+        </p>
+        <Button
+          variant="outline"
+          className="shrink-0"
+          onClick={() => onOpenFile(meta.path)}
+        >
+          Open in editor
+          <ArrowUpRight aria-hidden="true" size={14} />
+        </Button>
+      </div>
       <div className="overlay-section">
         <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-muted-foreground">
           Metadata
@@ -610,11 +743,17 @@ function FileTypeIcon({ path }: { path: string }) {
   );
 }
 
-function FilesPane({ state }: { state: OverlayState }) {
+function FilesPane({
+  state,
+  onOpenFile,
+}: {
+  state: OverlayState;
+  onOpenFile: (path: string) => void;
+}) {
   if (state.selectedFilePath && state.fileMetadata) {
     return (
       <section className="overlay-pane">
-        <FileMetadataPanel meta={state.fileMetadata} />
+        <FileMetadataPanel meta={state.fileMetadata} onOpenFile={onOpenFile} />
       </section>
     );
   }
@@ -628,10 +767,18 @@ function FilesPane({ state }: { state: OverlayState }) {
     );
   }
   return (
-    <section className="overlay-pane">
-      <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-        Select a file to view details.
-      </p>
+    <section className="overlay-pane overlay-pane--empty">
+      <Empty className="h-full border-0 p-6 md:p-8">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <FileText aria-hidden="true" size={18} />
+          </EmptyMedia>
+          <EmptyTitle>Select a file</EmptyTitle>
+          <EmptyDescription>
+            Choose a file from the left panel to view details.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     </section>
   );
 }
@@ -743,6 +890,29 @@ interface RuntimePaneProps {
   onRestart: () => void;
 }
 
+function resolveRuntimeActionHandler(
+  action: DashboardActionState,
+  handlers: {
+    onStart: () => void;
+    onStop: () => void;
+    onRestart: () => void;
+  },
+): () => void {
+  if (action.id === "start") return handlers.onStart;
+  if (action.id === "restart") return handlers.onRestart;
+  return handlers.onStop;
+}
+
+function RuntimeActionIcon({ actionId }: { actionId: DashboardActionId }) {
+  if (actionId === "start") {
+    return <Play aria-hidden="true" size={14} />;
+  }
+  if (actionId === "restart") {
+    return <RotateCcw aria-hidden="true" size={14} />;
+  }
+  return <Square aria-hidden="true" size={14} />;
+}
+
 function RuntimePane({
   state,
   wsConnected,
@@ -753,23 +923,23 @@ function RuntimePane({
   onStop,
   onRestart,
 }: RuntimePaneProps) {
-  const bridgeState = state.bridgeState;
-  const runtime = bridgeState?.runtime;
-  const capabilities = bridgeState?.capabilities;
-  const phase = runtime?.phase ?? "stopped";
+  const runtimeData = buildRuntimeSections({
+    live: toDashboardLiveState(state),
+    websocket: toDashboardWebSocketSnapshot({
+      wsConnected,
+      wsOpenedAt,
+      wsFallbackMode,
+      wsConsecutiveFailures,
+    }),
+    actionLoading: resolveDashboardActionLoading(state.loadingAction),
+  });
 
-  const isTransitioning =
-    phase === "starting" ||
-    phase === "stopping" ||
-    Boolean(state.loadingAction);
-  const isRunning = phase === "running";
-  const hasControl = capabilities?.hasRuntimeControl ?? false;
-
-  const startLabel =
-    state.loadingAction === "Starting" ? "Starting..." : "Start";
-  const stopLabel = state.loadingAction === "Stopping" ? "Stopping..." : "Stop";
-  const restartLabel =
-    state.loadingAction === "Restarting" ? "Restarting..." : "Restart";
+  const controlsSection = runtimeData.sections.find(
+    (section): section is DashboardControlsSection => section.id === "controls",
+  );
+  const runtimeSections = runtimeData.sections.filter(
+    (section): section is DashboardTableSection => section.id !== "controls",
+  );
 
   return (
     <div className="overlay-pane">
@@ -778,156 +948,47 @@ function RuntimePane({
           Controls
         </h4>
         <div className="overlay-actions">
-          <Button
-            variant="outline"
-            disabled={!hasControl || isRunning || isTransitioning}
-            onClick={onStart}
-          >
-            <Play aria-hidden="true" size={14} />
-            {startLabel}
-          </Button>
-          <Button
-            variant="outline"
-            disabled={!hasControl || !isRunning || isTransitioning}
-            onClick={onStop}
-          >
-            <Square aria-hidden="true" size={14} />
-            {stopLabel}
-          </Button>
-          <Button
-            variant="outline"
-            disabled={!hasControl || !isRunning || isTransitioning}
-            onClick={onRestart}
-          >
-            <RotateCcw aria-hidden="true" size={14} />
-            {restartLabel}
-          </Button>
+          {(controlsSection?.actions ?? []).map((action) => (
+            <Button
+              key={action.id}
+              variant="outline"
+              disabled={action.disabled}
+              onClick={resolveRuntimeActionHandler(action, {
+                onStart,
+                onStop,
+                onRestart,
+              })}
+            >
+              <RuntimeActionIcon actionId={action.id} />
+              {action.loading ? action.loadingLabel : action.label}
+            </Button>
+          ))}
         </div>
-        {state.errorMessage && (
+        {controlsSection?.message && (
           <p className="text-xs leading-[1.4] text-muted-foreground">
-            {state.errorMessage}
+            {controlsSection.message}
           </p>
         )}
       </div>
 
-      <div className="overlay-section">
-        <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-          Bridge
-        </h4>
-        <div className="overlay-kv-grid">
-          <KvRow
-            label="Transport"
-            value={formatTransportState(state.transportState)}
-            badgeVariant={resolveTransportBadgeVariant(state.transportState)}
-          />
-          <KvRow
-            label="Connected"
-            value={state.connected ? "Yes" : "No"}
-            badgeVariant={state.connected ? "success" : "error"}
-          />
-          {bridgeState?.protocolVersion && (
-            <KvRow label="Protocol" value={`v${bridgeState.protocolVersion}`} />
-          )}
-          {bridgeState?.capabilities?.supportedProtocolVersions?.length && (
-            <KvRow
-              label="Supported"
-              value={bridgeState.capabilities.supportedProtocolVersions
-                .map((v) => `v${v}`)
-                .join(", ")}
-            />
-          )}
-          {state.lastSuccessAt && (
-            <KvRow
-              label="Last contact"
-              value={formatDate(state.lastSuccessAt)}
-            />
-          )}
-          {bridgeState?.error && (
-            <KvRow label="Error" value={bridgeState.error} />
-          )}
-        </div>
-      </div>
-
-      <div className="overlay-section">
-        <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-          WebSocket
-        </h4>
-        <div className="overlay-kv-grid">
-          <KvRow
-            label="Status"
-            value={wsConnected ? "Open" : "Closed"}
-            badgeVariant={wsConnected ? "success" : "error"}
-          />
-          {wsOpenedAt && (
-            <KvRow label="Opened" value={formatDate(wsOpenedAt)} />
-          )}
-          <KvRow
-            label="Mode"
-            value={wsFallbackMode ? "Polling fallback" : "WebSocket"}
-          />
-          {wsConsecutiveFailures > 0 && (
-            <KvRow label="Failures" value={String(wsConsecutiveFailures)} />
-          )}
-        </div>
-      </div>
-
-      <div className="overlay-section">
-        <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-          Runtime
-        </h4>
-        <div className="overlay-kv-grid">
-          <KvRow
-            label="Phase"
-            value={formatPhase(phase)}
-            badgeVariant={resolveRuntimePhaseBadgeVariant(phase)}
-          />
-          {runtime?.pid && <KvRow label="PID" value={String(runtime.pid)} />}
-          {runtime?.url && <KvRow label="URL" value={runtime.url} />}
-          {runtime?.startedAt && (
-            <>
-              <KvRow label="Started" value={formatDate(runtime.startedAt)} />
-              <KvRow label="Uptime" value={formatUptime(runtime.startedAt)} />
-            </>
-          )}
-          {runtime?.lastError && (
-            <KvRow label="Last error" value={runtime.lastError} />
-          )}
-        </div>
-      </div>
-
-      {capabilities && (
-        <div className="overlay-section">
-          <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-            Capabilities
-          </h4>
-          <div className="overlay-kv-grid">
-            <KvRow label="Command host" value={capabilities.commandHost} />
-            <KvRow label="WS subprotocol" value={capabilities.wsSubprotocol} />
-            <KvRow
-              label="Runtime control"
-              value={capabilities.hasRuntimeControl ? "Yes" : "No"}
-            />
-            <KvRow
-              label="Actions"
-              value={
-                [
-                  capabilities.canStartRuntime ? "start" : null,
-                  capabilities.canRestartRuntime ? "restart" : null,
-                  capabilities.canStopRuntime ? "stop" : null,
-                ]
-                  .filter(Boolean)
-                  .join(", ") || "none"
-              }
-            />
-            {capabilities.fallbackCommand && (
-              <KvRow
-                label="Fallback cmd"
-                value={capabilities.fallbackCommand}
-              />
-            )}
+      <div className="grid grid-cols-1 content-start items-start gap-4 md:grid-cols-2">
+        {runtimeSections.map((section) => (
+          <div key={section.id} className="overlay-section">
+            <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+              {section.title}
+            </h4>
+            <div className="overlay-kv-grid">
+              {section.rows.map((row) => (
+                <KvRow
+                  key={row.key}
+                  label={row.label}
+                  {...toKvRowValueProps(row.value)}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
@@ -943,6 +1004,7 @@ export interface OverlayPanelProps {
   onStop: () => void;
   onRestart: () => void;
   onLoadFileMetadata: (path: string) => void;
+  onOpenFile: (path: string) => void;
   onEnsureFileTreeLoaded: () => void;
 }
 
@@ -957,6 +1019,7 @@ export function OverlayPanel({
   onStop,
   onRestart,
   onLoadFileMetadata,
+  onOpenFile,
   onEnsureFileTreeLoaded,
 }: OverlayPanelProps) {
   const theme = normalizeTheme(state.settings.theme);
@@ -985,7 +1048,7 @@ export function OverlayPanel({
           />
         );
       case "files":
-        return <FilesPane state={state} />;
+        return <FilesPane state={state} onOpenFile={onOpenFile} />;
       case "settings":
         return <SettingsPane state={state} onDispatch={onDispatch} />;
       default:

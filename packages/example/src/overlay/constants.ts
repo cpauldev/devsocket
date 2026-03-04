@@ -1,15 +1,34 @@
+import {
+  type UniversaClientRuntimeContext,
+  createClientRuntimeContext,
+  resolveClientRuntimeContext,
+} from "universa-kit/client-runtime";
+
 import type {
   OverlayPosition,
   OverlaySettings,
   TabDefinition,
 } from "./types.js";
 
-export const OVERLAY_HOST_ID = "overlay-host";
+export const OVERLAY_MODULE_SPECIFIER = "example/overlay";
+
+function createFallbackRuntimeContext(): UniversaClientRuntimeContext {
+  return createClientRuntimeContext({
+    namespaceId: "example",
+  });
+}
+
+export const OVERLAY_RUNTIME_CONTEXT: UniversaClientRuntimeContext =
+  resolveClientRuntimeContext(OVERLAY_MODULE_SPECIFIER) ??
+  createFallbackRuntimeContext();
+
+export const OVERLAY_HOST_ID = OVERLAY_RUNTIME_CONTEXT.rootId;
 export const OVERLAY_MOUNT_ROOT_ATTRIBUTE = "data-overlay-root";
 export const OVERLAY_MOUNT_ROOT_SELECTOR = `#${OVERLAY_HOST_ID} [${OVERLAY_MOUNT_ROOT_ATTRIBUTE}="true"]`;
-export const OVERLAY_STORAGE_KEY = "demo:overlay:settings";
-export const OVERLAY_DISABLE_KEY = "demo:overlay:disabled";
-export const BRIDGE_BASE_PATH = "/__demo";
+export const OVERLAY_STORAGE_KEY = OVERLAY_RUNTIME_CONTEXT.stateStorageKey;
+export const OVERLAY_ENABLED_KEY = OVERLAY_RUNTIME_CONTEXT.enabledStorageKey;
+export const OVERLAY_INSTANCE_GLOBAL_KEY = OVERLAY_RUNTIME_CONTEXT.instanceKey;
+export const BRIDGE_BASE_PATH = OVERLAY_RUNTIME_CONTEXT.bridgePathPrefix;
 
 export const WS_RECONNECT_DELAY_MS = 1500;
 export const STATE_POLL_INTERVAL_MS = 12000;

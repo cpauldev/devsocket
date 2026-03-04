@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@lucide/svelte": "^0.575.0",
-    "demo": "workspace:*",
+    "example": "workspace:*",
     "example-ui": "workspace:*",
     "universa-ui": "file:../../../universa-ui"
   },

@@ -18,6 +18,10 @@
       "types": "./dist/client/client.d.ts",
       "default": "./dist/client/client.js"
     },
+    "./client-runtime": {
+      "types": "./dist/client/runtime-context.d.ts",
+      "default": "./dist/client/runtime-context.js"
+    },
     "./preset": {
       "types": "./dist/preset.d.ts",
       "default": "./dist/preset.js"

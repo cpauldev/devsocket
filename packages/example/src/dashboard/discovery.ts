@@ -1,3 +1,4 @@
+import { BRIDGE_BASE_PATH } from "../overlay/constants.js";
 import type {
   DashboardDiscoveredInstance,
   DashboardDiscoveryConfig,
@@ -143,7 +144,7 @@ async function probeOrigin(
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(`${origin}/__demo/health`, {
+    const response = await fetch(`${origin}${BRIDGE_BASE_PATH}/health`, {
       method: "GET",
       cache: "no-store",
       mode: "cors",

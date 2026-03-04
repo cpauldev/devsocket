@@ -9,6 +9,8 @@
  */
 
 const PORT_RANGE_START = 4600;
+const EXAMPLE_BRIDGE_NAMESPACE = "example";
+const EXAMPLE_BRIDGE_PREFIX = `/__universa/${EXAMPLE_BRIDGE_NAMESPACE}`;
 
 const EXAMPLE_IDS = [
   "react",
@@ -76,8 +78,10 @@ async function verifyExample(
   const details: string[] = [];
   let pass = true;
 
-  // Check 1: /__demo/health
-  const health = await checkEndpoint(`${baseUrl}/__demo/health`);
+  // Check 1: /__universa/<namespace>/health
+  const health = await checkEndpoint(
+    `${baseUrl}${EXAMPLE_BRIDGE_PREFIX}/health`,
+  );
   if (!health.ok) {
     pass = false;
     details.push(`FAIL health: ${health.error ?? `HTTP ${health.status}`}`);
@@ -91,8 +95,8 @@ async function verifyExample(
     }
   }
 
-  // Check 2: /__demo/state
-  const state = await checkEndpoint(`${baseUrl}/__demo/state`);
+  // Check 2: /__universa/<namespace>/state
+  const state = await checkEndpoint(`${baseUrl}${EXAMPLE_BRIDGE_PREFIX}/state`);
   if (!state.ok) {
     pass = false;
     details.push(`FAIL state: ${state.error ?? `HTTP ${state.status}`}`);

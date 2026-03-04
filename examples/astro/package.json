@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@lucide/astro": "^0.575.0",
-    "demo": "workspace:*",
+    "example": "workspace:*",
     "example-ui": "workspace:*",
     "astro": "^5.0.0",
     "universa-ui": "file:../../../universa-ui"

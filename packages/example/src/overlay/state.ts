@@ -1,7 +1,7 @@
 import {
   DEFAULT_SETTINGS,
   DEFAULT_TAB,
-  OVERLAY_DISABLE_KEY,
+  OVERLAY_ENABLED_KEY,
   OVERLAY_POSITIONS,
   OVERLAY_STORAGE_KEY,
 } from "./constants.js";
@@ -63,8 +63,10 @@ export function loadOverlaySettings(): OverlaySettings {
   const settings = mergeSettings(base, fromStorage);
 
   if (typeof window !== "undefined") {
-    const disabled = localStorage.getItem(OVERLAY_DISABLE_KEY) === "true";
-    if (disabled) settings.enabled = false;
+    const explicitEnabled = localStorage.getItem(OVERLAY_ENABLED_KEY);
+    if (explicitEnabled === "true" || explicitEnabled === "false") {
+      settings.enabled = explicitEnabled === "true";
+    }
   }
 
   return settings;
@@ -81,8 +83,8 @@ export function persistOverlaySettings(settings: OverlaySettings): void {
 
   try {
     localStorage.setItem(
-      OVERLAY_DISABLE_KEY,
-      settings.enabled ? "false" : "true",
+      OVERLAY_ENABLED_KEY,
+      settings.enabled ? "true" : "false",
     );
   } catch {
     // Ignore localStorage failures.

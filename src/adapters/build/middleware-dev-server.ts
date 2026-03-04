@@ -72,12 +72,21 @@ export function withUniversaSetupMiddlewares<
   config: TConfig,
   options: UniversaAdapterOptions = {},
 ): TConfig & SetupMiddlewaresConfig<TMiddlewares, TDevServer> {
+  const resolvedOptions = resolveAdapterOptions(options);
+  const isFrameworkActive = resolvedOptions._frameworkIsActive;
   const lifecycle = createSetupMiddlewaresBridgeLifecycle(options);
   const originalSetupMiddlewares = config.setupMiddlewares;
 
   return {
     ...config,
     setupMiddlewares: (middlewares, devServer) => {
+      if (isFrameworkActive && !isFrameworkActive()) {
+        if (originalSetupMiddlewares) {
+          return originalSetupMiddlewares(middlewares, devServer);
+        }
+        return middlewares;
+      }
+
       const adapterServer = toMiddlewareAdapterServer(devServer);
       if (adapterServer) {
         void lifecycle.setup(adapterServer);
@@ -90,4 +99,3 @@ export function withUniversaSetupMiddlewares<
     },
   } as TConfig & SetupMiddlewaresConfig<TMiddlewares, TDevServer>;
 }
-

@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "demo": "workspace:*",
+    "example": "workspace:*",
     "example-ui": "workspace:*",
     "solid-js": "^1.9.9",
     "universa-ui": "file:../../../universa-ui"

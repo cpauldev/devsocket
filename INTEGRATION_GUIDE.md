@@ -77,13 +77,16 @@ This is the simplest integration shape for tool authors and users.
 
 ```ts
 // src/index.ts
-import { createUniversaToolPreset } from "universa-kit/preset";
+import { createUniversaPreset } from "universa-kit/preset";
 
-export const acmetool = createUniversaToolPreset({
-  command: "acmetool",
-  args: ["dev"],
-  fallbackCommand: "acmetool dev",
-});
+export function acmetool() {
+  return createUniversaPreset({
+    identity: { packageName: "acmetool" },
+    command: "acmetool",
+    args: ["dev"],
+    fallbackCommand: "acmetool dev",
+  });
+}
 ```
 
 ```json
@@ -99,6 +102,10 @@ With this shape, users always import from one place:
 
 - `import { acmetool } from "acmetool"`
 
+Framework adapters compose all registered presets automatically. If users add multiple package integrations in the same config (two imports that use Universa), duplicate framework calls are ignored at runtime.
+
+Presets also derive bridge path + runtime context keys automatically from `identity.packageName`. Users do not need to define key prefixes, storage keys, or global key names.
+
 ## 3. User Integration Example (Next.js)
 
 ```bash
@@ -111,7 +118,7 @@ import { acmetool } from "acmetool";
 
 const nextConfig = {};
 
-export default acmetool.next(nextConfig);
+export default acmetool().next(nextConfig);
 ```
 
 Then run normal app dev:
@@ -122,10 +129,10 @@ npm run dev
 
 Bridge routes are mounted on same origin:
 
-- `GET /__universa/health`
-- `GET /__universa/state`
-- `WS /__universa/events`
-- `ANY /__universa/api/*`
+- `GET /__universa/acmetool/health`
+- `GET /__universa/acmetool/state`
+- `WS /__universa/acmetool/events`
+- `ANY /__universa/acmetool/api/*`
 
 ## 4. User Integration Example (Vite)
 
@@ -139,7 +146,7 @@ import { acmetool } from "acmetool";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [acmetool.vite()],
+  plugins: [acmetool().vite()],
 });
 ```
 
@@ -156,7 +163,9 @@ This example mounts a minimal Shadow DOM overlay and wires runtime controls.
 ```ts
 import { createUniversaClient } from "universa-kit/client";
 
-const client = createUniversaClient();
+const client = createUniversaClient({
+  namespaceId: "acmetool",
+});
 
 const host = document.createElement("div");
 host.id = "acmetool-universa-kit-overlay";
@@ -243,5 +252,5 @@ If you prefer names like `withAcmeTool(...)` or `createAcmeToolVitePlugin(...)`,
 ## 7. Notes
 
 - If `command`/`args` are not configured, runtime `start` and `restart` are disabled by design.
-- Keep your public API stable (`acmetool.next()`, `acmetool.vite()`, etc.).
+- Keep your public API stable (`acmetool().next()`, `acmetool().vite()`, etc.).
 - Most frameworks need one config change, but some ecosystems may require extra setup steps.

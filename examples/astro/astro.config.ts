@@ -1,6 +1,6 @@
 import { defineConfig } from "astro/config";
-import demo from "demo";
+import { example } from "example";
 
 export default defineConfig({
-  integrations: [demo.astro()],
+  integrations: [example().astro()],
 });

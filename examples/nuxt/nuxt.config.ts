@@ -1,10 +1,12 @@
-import demo from "demo";
+import { example } from "example";
 
 export default defineNuxtConfig({
   ssr: false,
-  modules: ["nuxt-lucide-icons", demo.nuxt()],
+  modules: ["nuxt-lucide-icons", example().nuxt()],
   css: ["example-ui/layout.css", "universa-ui/styles.css"],
-  transpilePackages: ["example-ui", "universa-ui"],
+  build: {
+    transpile: ["example-ui", "universa-ui"],
+  },
   compatibilityDate: "2024-04-03",
   app: {
     head: {

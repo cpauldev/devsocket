@@ -1,9 +1,9 @@
-import demo from "demo";
+import { example } from "example";
 import vinext from "vinext";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [demo.vite(), vinext()],
+  plugins: [example().vite(), vinext()],
   server: {
     watch: {
       // Running multiple examples generates Nuxt files under ../nuxt/.nuxt.

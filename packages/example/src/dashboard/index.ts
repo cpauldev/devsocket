@@ -40,6 +40,8 @@ export type {
   DashboardLiveState,
   DashboardRuntimeSection,
   DashboardTableRow,
+  DashboardTableCell,
   DashboardTableSection,
+  DashboardTransportState,
   DashboardWebSocketSnapshot,
 } from "./types.js";

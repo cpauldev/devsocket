@@ -1,3 +1,4 @@
+import { normalizeBridgePathPrefix } from "../../bridge/prefix.js";
 import type { StandaloneBridgeServer } from "../../bridge/standalone.js";
 import {
   type UniversaAdapterOptions,
@@ -14,8 +15,7 @@ function createDefaultAngularCliBridgeGlobalKey(): string {
 }
 
 function normalizeProxyContext(context: string): string {
-  const withLeadingSlash = context.startsWith("/") ? context : `/${context}`;
-  return withLeadingSlash.replace(/\/+$/, "");
+  return normalizeBridgePathPrefix(context);
 }
 
 function createProxyTarget(baseUrl: string): AngularCliProxyTarget {
@@ -63,9 +63,10 @@ export async function startUniversaAngularCliBridge(
 export async function createUniversaAngularCliProxyConfig(
   options: AngularCliUniversaOptions = {},
 ): Promise<AngularCliUniversaProxyConfig> {
+  const resolvedOptions = resolveAdapterOptions(options);
   const bridge = await startUniversaAngularCliBridge(options);
   const proxyContext = normalizeProxyContext(
-    options.proxyContext ?? options.bridgePathPrefix ?? "/__universa",
+    options.proxyContext ?? resolvedOptions.bridgePathPrefix ?? "/__universa",
   );
   const proxyTarget = createProxyTarget(bridge.baseUrl);
 

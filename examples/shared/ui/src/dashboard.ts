@@ -6,7 +6,7 @@ import {
   type DashboardTableSection,
   buildRuntimeSections,
   resolveDashboardStatusBadge,
-} from "demo/dashboard";
+} from "example/dashboard";
 
 export interface DashboardRuntimeView {
   summary: string;

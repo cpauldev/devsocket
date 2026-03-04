@@ -194,17 +194,17 @@ export async function attachUniversaToBunServe(
   ): BunServeWebSocketHandlers<Data> => {
     return {
       open: (socket) => {
-        const bridgeSocketData = socket.data.__universa;
-        if (!bridgeSocketData) {
+        const universaSocketState = socket.data.__universa;
+        if (!universaSocketState) {
           existing.open?.(socket);
           return;
         }
 
         const upstream = new WebSocket(
-          bridgeSocketData.upstreamUrl,
+          universaSocketState.upstreamUrl,
           UNIVERSA_WS_SUBPROTOCOL,
         );
-        bridgeSocketData.upstream = upstream;
+        universaSocketState.upstream = upstream;
         upstreamSockets.add(upstream);
 
         upstream.addEventListener("message", (event) => {
@@ -219,37 +219,37 @@ export async function attachUniversaToBunServe(
         });
       },
       message: (socket, message) => {
-        const bridgeSocketData = socket.data.__universa;
-        if (!bridgeSocketData) {
+        const universaSocketState = socket.data.__universa;
+        if (!universaSocketState) {
           existing.message?.(socket, message);
           return;
         }
 
-        const upstream = bridgeSocketData.upstream;
+        const upstream = universaSocketState.upstream;
         if (!upstream || upstream.readyState !== WebSocket.OPEN) {
           return;
         }
         upstream.send(normalizeWebSocketMessage(message));
       },
       close: (socket, code, reason) => {
-        const bridgeSocketData = socket.data.__universa;
-        if (!bridgeSocketData) {
+        const universaSocketState = socket.data.__universa;
+        if (!universaSocketState) {
           existing.close?.(socket, code, reason);
           return;
         }
 
-        closeUpstreamSocket(bridgeSocketData.upstream);
-        bridgeSocketData.upstream = null;
+        closeUpstreamSocket(universaSocketState.upstream);
+        universaSocketState.upstream = null;
       },
       error: (socket, error) => {
-        const bridgeSocketData = socket.data.__universa;
-        if (!bridgeSocketData) {
+        const universaSocketState = socket.data.__universa;
+        if (!universaSocketState) {
           existing.error?.(socket, error);
           return;
         }
 
-        closeUpstreamSocket(bridgeSocketData.upstream);
-        bridgeSocketData.upstream = null;
+        closeUpstreamSocket(universaSocketState.upstream);
+        universaSocketState.upstream = null;
       },
     };
   };

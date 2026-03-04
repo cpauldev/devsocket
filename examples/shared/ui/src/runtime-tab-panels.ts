@@ -1,4 +1,7 @@
-import type { DashboardTableRow, DashboardTableSection } from "demo/dashboard";
+import type {
+  DashboardTableRow,
+  DashboardTableSection,
+} from "example/dashboard";
 import {
   type BadgeVariant,
   type TabsItem,
@@ -16,6 +19,7 @@ import {
 
 type DashboardTableCell = DashboardTableRow["value"];
 type DashboardTextCell = Extract<DashboardTableCell, { kind: "text" }>;
+type DashboardLinkCell = Extract<DashboardTableCell, { kind: "link" }>;
 
 function createTextNode(text: string, className: string): HTMLSpanElement {
   const node = document.createElement("span");
@@ -29,9 +33,19 @@ function resolveBadgeVariant(variant: string): BadgeVariant {
 }
 
 function resolveTextClassName(tone: DashboardTextCell["tone"]): string {
-  if (tone === "code") return "demo-status-code";
-  if (tone === "muted") return "demo-status-muted";
-  return "demo-status-value";
+  if (tone === "code") return "example-status-code";
+  if (tone === "muted") return "example-status-muted";
+  return "example-status-value";
+}
+
+function createLinkNode(value: DashboardLinkCell): HTMLAnchorElement {
+  const node = document.createElement("a");
+  node.className = `example-status-link ${resolveTextClassName(value.tone)}`;
+  node.href = value.href;
+  node.target = "_blank";
+  node.rel = "noreferrer noopener";
+  node.textContent = value.text;
+  return node;
 }
 
 function createValueNode(value: DashboardTableCell): Node {
@@ -41,12 +55,18 @@ function createValueNode(value: DashboardTableCell): Node {
       variant: resolveBadgeVariant(value.variant),
     });
   }
+  if (value.kind === "link") {
+    return createLinkNode(value);
+  }
   return createTextNode(value.text, resolveTextClassName(value.tone));
 }
 
 function createValueSignature(value: DashboardTableCell): string {
   if (value.kind === "badge") {
     return `badge:${value.variant}:${value.text}`;
+  }
+  if (value.kind === "link") {
+    return `link:${value.tone ?? "default"}:${value.href}:${value.text}`;
   }
   return `text:${value.tone ?? "default"}:${value.text}`;
 }
@@ -86,12 +106,12 @@ function createRow(row: DashboardTableRow): HTMLTableRowElement {
   const tr = createTableRow();
   tr.dataset.rowKey = row.key;
 
-  const labelCell = createTableCell("demo-status-label-cell");
-  const label = createFieldLabel(row.label, undefined, "demo-status-label");
+  const labelCell = createTableCell("example-status-label-cell");
+  const label = createFieldLabel(row.label, undefined, "example-status-label");
   label.setAttribute("data-runtime-cell", "label");
   labelCell.appendChild(label);
 
-  const valueCell = createTableCell("demo-status-value-cell");
+  const valueCell = createTableCell("example-status-value-cell");
   valueCell.setAttribute("data-runtime-cell", "value");
   valueCell.dataset.valueSignature = createValueSignature(row.value);
   valueCell.appendChild(createValueNode(row.value));
@@ -106,18 +126,18 @@ function createPanel(
   runtimeError: string | null,
 ): HTMLElement {
   const panel = document.createElement("section");
-  panel.className = "demo-runtime-section";
+  panel.className = "example-runtime-section";
   panel.setAttribute("data-runtime-panel", section.id);
 
-  const frame = createFrame({ className: "demo-runtime-frame" });
+  const frame = createFrame({ className: "example-runtime-frame" });
   frame.setAttribute("data-runtime-frame", "true");
 
-  const header = createFrameHeader("demo-runtime-frame-header");
+  const header = createFrameHeader("example-runtime-frame-header");
   header.appendChild(
-    createFrameTitle(section.title, "demo-runtime-frame-title"),
+    createFrameTitle(section.title, "example-runtime-frame-title"),
   );
 
-  const table = createTable("demo-status-table");
+  const table = createTable("example-status-table");
   const tbody = createTableBody();
   tbody.setAttribute("data-runtime-table-body", "true");
   section.rows.forEach((row) => {
@@ -129,9 +149,9 @@ function createPanel(
   frame.appendChild(table);
 
   if (section.id === "runtime" && runtimeError) {
-    const footer = createFrameFooter("demo-frame-footer");
+    const footer = createFrameFooter("example-frame-footer");
     footer.setAttribute("data-runtime-error-footer", "true");
-    const errorText = createTextNode(runtimeError, "demo-status-muted");
+    const errorText = createTextNode(runtimeError, "example-status-muted");
     errorText.setAttribute("data-runtime-error-text", "true");
     footer.appendChild(errorText);
     frame.appendChild(footer);
@@ -180,9 +200,9 @@ function syncRuntimeErrorFooter(
     return;
   }
 
-  const footer = createFrameFooter("demo-frame-footer");
+  const footer = createFrameFooter("example-frame-footer");
   footer.setAttribute("data-runtime-error-footer", "true");
-  const errorText = createTextNode(runtimeError ?? "", "demo-status-muted");
+  const errorText = createTextNode(runtimeError ?? "", "example-status-muted");
   errorText.setAttribute("data-runtime-error-text", "true");
   footer.appendChild(errorText);
   frame.appendChild(footer);

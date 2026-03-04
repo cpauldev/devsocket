@@ -3,11 +3,16 @@ import {
   type UniversaBridgeOptions,
   createUniversaBridge,
 } from "../../bridge/bridge.js";
+import {
+  buildBridgeRewriteSource,
+  normalizeBridgePathPrefix,
+} from "../../bridge/prefix.js";
 import type { BridgeMiddlewareServer } from "../../bridge/server-types.js";
 import {
   type StandaloneBridgeServer,
   startStandaloneUniversaBridgeServer,
 } from "../../bridge/standalone.js";
+import type { UniversaClientRuntimeContext } from "../../client/runtime-context.js";
 
 export const UNIVERSA_DEV_ADAPTER_NAME = "universa-bridge";
 export const UNIVERSA_BRIDGE_PATH_PREFIX = "/__universa";
@@ -37,15 +42,30 @@ export interface UniversaAdapterOptions extends UniversaBridgeOptions {
   adapterName?: string;
   rewriteSource?: string;
   nextBridgeGlobalKey?: string;
-  /** Package specifier for the overlay client module to auto-inject (e.g. "demo/overlay"). */
-  overlayModule?: string;
+  /** Package specifier for the client module to auto-inject (e.g. "example/overlay"). */
+  clientModule?: string;
+  /** Controls whether adapter-level client injection is enabled. */
+  clientEnabled?: boolean;
+  /** Controls whether client modules should auto-mount once injected. */
+  clientAutoMount?: boolean;
+  /** Optional namespaced context published to client modules before loading. */
+  clientRuntimeContext?: UniversaClientRuntimeContext;
+  /** Stable namespace id for collision-proof adapter internals. */
+  namespaceId?: string;
+  /** Internal framework-level activation guard used by preset composition. */
+  _frameworkIsActive?: () => boolean;
 }
 
 interface ResolvedUniversaAdapterOptions extends UniversaBridgeOptions {
   adapterName: string;
   rewriteSource: string;
   nextBridgeGlobalKey?: string;
-  overlayModule?: string;
+  clientModule?: string;
+  clientEnabled: boolean;
+  clientAutoMount: boolean;
+  clientRuntimeContext?: UniversaClientRuntimeContext;
+  namespaceId?: string;
+  _frameworkIsActive?: () => boolean;
 }
 
 export type MiddlewareAdapterServer = BridgeMiddlewareServer;
@@ -62,13 +82,20 @@ export type ViteBridgeLifecycle = BridgeLifecycle;
 export function resolveAdapterOptions(
   options: UniversaAdapterOptions = {},
 ): ResolvedUniversaAdapterOptions {
+  const bridgePathPrefix = normalizeBridgePathPrefix(options.bridgePathPrefix);
+
   return {
     ...options,
     adapterName: options.adapterName ?? UNIVERSA_DEV_ADAPTER_NAME,
-    bridgePathPrefix: options.bridgePathPrefix ?? UNIVERSA_BRIDGE_PATH_PREFIX,
-    rewriteSource: options.rewriteSource ?? UNIVERSA_BRIDGE_REWRITE_SOURCE,
+    bridgePathPrefix,
+    rewriteSource: buildBridgeRewriteSource(bridgePathPrefix),
     nextBridgeGlobalKey: options.nextBridgeGlobalKey,
-    overlayModule: options.overlayModule,
+    clientModule: options.clientModule,
+    clientEnabled: options.clientEnabled ?? true,
+    clientAutoMount: options.clientAutoMount ?? true,
+    clientRuntimeContext: options.clientRuntimeContext,
+    namespaceId: options.namespaceId,
+    _frameworkIsActive: options._frameworkIsActive,
   };
 }
 
@@ -79,6 +106,12 @@ function toBridgeOptions(
     adapterName: _adapterName,
     rewriteSource: _rewriteSource,
     nextBridgeGlobalKey: _nextBridgeGlobalKey,
+    clientModule: _clientModule,
+    clientEnabled: _clientEnabled,
+    clientAutoMount: _clientAutoMount,
+    clientRuntimeContext: _clientRuntimeContext,
+    namespaceId: _namespaceId,
+    _frameworkIsActive: _frameworkIsActive,
     ...bridgeOptions
   } = options;
   return bridgeOptions;
@@ -106,7 +139,6 @@ export function createBridgeLifecycle(
   const resolvedOptions = resolveAdapterOptions(options);
   let bridge: UniversaBridge | null = null;
   let setupPromise: Promise<UniversaBridge> | null = null;
-  let attachedServers = new WeakSet<MiddlewareAdapterServer>();
 
   return {
     async setup(server) {
@@ -117,16 +149,11 @@ export function createBridgeLifecycle(
       setupPromise = (async () => {
         if (bridge?.isClosed()) {
           bridge = null;
-          attachedServers = new WeakSet<MiddlewareAdapterServer>();
         }
 
         if (!bridge) {
           bridge = await createUniversaBridge(toBridgeOptions(resolvedOptions));
-        }
-
-        if (!attachedServers.has(server)) {
           await bridge.attach(server);
-          attachedServers.add(server);
         }
 
         return bridge;
@@ -150,7 +177,6 @@ export function createBridgeLifecycle(
 
       bridge = null;
       setupPromise = null;
-      attachedServers = new WeakSet<MiddlewareAdapterServer>();
 
       if (currentBridge) {
         await currentBridge.close();
@@ -221,12 +247,27 @@ export function createBridgeRewriteRoute(
   baseUrl: string,
   rewriteSource = UNIVERSA_BRIDGE_REWRITE_SOURCE,
 ): UniversaRewriteRule {
+  const normalizedSource = buildBridgeRewriteSource(
+    rewriteSource.replace(/\/:path\*$/, ""),
+  );
   return {
-    source: rewriteSource,
-    destination: `${baseUrl}${rewriteSource}`,
+    source: normalizedSource,
+    destination: `${baseUrl}${normalizedSource}`,
   };
 }
 
 export function appendPlugin<T>(plugins: T[] | undefined, plugin: T): T[] {
   return [...(plugins ?? []), plugin];
+}
+
+export function buildClientRuntimeContextRegistration(
+  clientModule: string,
+  context?: UniversaClientRuntimeContext,
+): string[] {
+  if (!context) return [];
+
+  return [
+    `globalThis.__UNIVERSA_CLIENT_RUNTIME_CONTEXTS__ ??= {};`,
+    `globalThis.__UNIVERSA_CLIENT_RUNTIME_CONTEXTS__[${JSON.stringify(clientModule)}] = ${JSON.stringify(context)};`,
+  ];
 }

@@ -2,6 +2,7 @@ import {
   BRIDGE_PREFIX_DEFAULT,
   UNIVERSA_WS_SUBPROTOCOL,
 } from "../bridge/constants.js";
+import { normalizeBridgePathPrefix } from "../bridge/prefix.js";
 import type {
   UniversaBridgeEvent,
   UniversaBridgeInstance,
@@ -13,6 +14,7 @@ import type {
 export interface UniversaClientOptions {
   baseUrl?: string;
   bridgePathPrefix?: string;
+  namespaceId?: string;
   fetchImpl?: typeof fetch;
   webSocketFactory?: (
     url: string,
@@ -181,7 +183,12 @@ function extractMessagePayload(message: unknown): string {
 export function createUniversaClient(
   options: UniversaClientOptions = {},
 ): UniversaClient {
-  const bridgePathPrefix = options.bridgePathPrefix ?? BRIDGE_PREFIX_DEFAULT;
+  const bridgePathPrefix = normalizeBridgePathPrefix(
+    options.bridgePathPrefix ??
+      (options.namespaceId?.trim()
+        ? options.namespaceId.trim()
+        : BRIDGE_PREFIX_DEFAULT),
+  );
   const fetchImpl = options.fetchImpl ?? fetch;
 
   const requestJson = async <T>(

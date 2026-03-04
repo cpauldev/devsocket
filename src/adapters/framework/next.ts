@@ -10,6 +10,8 @@ import {
 } from "../shared/adapter-utils.js";
 
 type MaybePromise<T> = T | Promise<T>;
+const NEXT_PUBLIC_CLIENT_CONTEXTS_ENV_KEY =
+  "NEXT_PUBLIC_UNIVERSA_CLIENT_CONTEXTS";
 
 export type UniversaNextOptions = UniversaAdapterOptions;
 
@@ -33,23 +35,34 @@ type WebpackEntries = Record<string, WebpackEntryValue>;
 type WebpackConfig = Record<string, unknown> & { entry?: unknown };
 type WebpackCtx = { isServer: boolean; dev: boolean };
 
-function prependOverlayToEntries(
+function parseClientContextMap(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "string") return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+function prependClientToEntries(
   entries: WebpackEntries,
-  overlayModule: string,
+  clientModule: string,
 ): WebpackEntries {
   for (const key of Object.keys(entries)) {
     const entry = entries[key];
     if (Array.isArray(entry)) {
-      if (!entry.includes(overlayModule)) {
-        entries[key] = [overlayModule, ...entry];
+      if (!entry.includes(clientModule)) {
+        entries[key] = [clientModule, ...entry];
       }
     } else if (
       entry &&
       typeof entry === "object" &&
       Array.isArray(entry.import)
     ) {
-      if (!entry.import.includes(overlayModule)) {
-        entry.import = [overlayModule, ...entry.import];
+      if (!entry.import.includes(clientModule)) {
+        entry.import = [clientModule, ...entry.import];
       }
     }
   }
@@ -66,6 +79,7 @@ export function withUniversaNext<T extends object>(
   }
 
   const resolvedOptions = resolveAdapterOptions(options);
+  const isFrameworkActive = resolvedOptions._frameworkIsActive;
   const nextBridgeGlobalKey =
     options.nextBridgeGlobalKey ?? createDefaultNextBridgeGlobalKey();
   const bridgeOptions = { ...resolvedOptions, nextBridgeGlobalKey };
@@ -76,6 +90,10 @@ export function withUniversaNext<T extends object>(
   const originalRewrites = next.rewrites;
 
   next.rewrites = async () => {
+    if (isFrameworkActive && !isFrameworkActive()) {
+      return originalRewrites ? await originalRewrites() : [];
+    }
+
     const bridge = await ensureBridge(bridgeOptions);
     const route = createBridgeRewriteRoute(
       bridge.baseUrl,
@@ -91,13 +109,31 @@ export function withUniversaNext<T extends object>(
     };
   };
 
-  const overlayModule = resolvedOptions.overlayModule;
-  if (overlayModule) {
+  const clientModule = resolvedOptions.clientModule;
+  const clientContext = resolvedOptions.clientRuntimeContext;
+  if (clientModule && resolvedOptions.clientEnabled !== false) {
+    if (clientContext) {
+      const nextAny = next as Record<string, unknown>;
+      const envValue =
+        typeof nextAny.env === "object" && nextAny.env
+          ? (nextAny.env as Record<string, unknown>)
+          : {};
+      const clientContexts = parseClientContextMap(
+        envValue[NEXT_PUBLIC_CLIENT_CONTEXTS_ENV_KEY],
+      );
+      clientContexts[clientModule] = clientContext;
+      nextAny.env = {
+        ...envValue,
+        [NEXT_PUBLIC_CLIENT_CONTEXTS_ENV_KEY]: JSON.stringify(clientContexts),
+      };
+    }
+
     const originalWebpack = next.webpack;
     next.webpack = (config: WebpackConfig, ctx: WebpackCtx): WebpackConfig => {
       const baseConfig = originalWebpack
         ? originalWebpack(config, ctx)
         : config;
+      if (isFrameworkActive && !isFrameworkActive()) return baseConfig;
       if (ctx.isServer || !ctx.dev) return baseConfig;
 
       const originalEntry = baseConfig.entry as
@@ -112,7 +148,7 @@ export function withUniversaNext<T extends object>(
           typeof originalEntry === "function"
             ? await originalEntry(...args)
             : (originalEntry ?? {});
-        return prependOverlayToEntries(entries, overlayModule);
+        return prependClientToEntries(entries, clientModule);
       };
 
       return baseConfig;

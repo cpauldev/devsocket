@@ -21,6 +21,8 @@
   --radius: 0.625rem;
   --color-background: rgb(255 255 255);
   --color-foreground: oklch(0.141 0.005 285.823);
+  --color-card: rgb(255 255 255);
+  --color-card-foreground: oklch(0.141 0.005 285.823);
   --color-muted-foreground: oklch(0.552 0.016 285.938);
   --color-border: oklch(0.92 0.004 286.32);
   --color-input: oklch(0.92 0.004 286.32);
@@ -149,7 +151,7 @@
 [data-overlay-root="true"][data-overlay-position$="left"] [data-sileo-pill] {
   transform: translateX(
       calc(
-        var(--sileo-native-pill-width) / 2 *
+        var(--_pw, var(--sileo-native-pill-width)) / 2 *
           (var(--sileo-native-width) / var(--sileo-width) - 1)
       )
     )
@@ -166,7 +168,13 @@
 }
 [data-overlay-root="true"][data-overlay-position$="center"] [data-sileo-pill] {
   transform: translateX(
-      calc((var(--sileo-native-width) - var(--sileo-native-pill-width)) / 2)
+      calc(
+        (
+            var(--sileo-native-width) -
+              var(--_pw, var(--sileo-native-pill-width))
+          ) /
+          2
+      )
     )
     scaleX(calc(var(--sileo-native-width) / var(--sileo-width))) !important;
   transform-origin: 50% 50%;
@@ -182,8 +190,8 @@
 [data-overlay-root="true"][data-overlay-position$="right"] [data-sileo-pill] {
   transform: translateX(
       calc(
-        var(--sileo-native-width) - var(--sileo-native-pill-width) / 2 *
-          (1 + var(--sileo-native-width) / var(--sileo-width))
+        var(--sileo-native-width) - var(--_pw, var(--sileo-native-pill-width)) /
+          2 * (1 + var(--sileo-native-width) / var(--sileo-width))
       )
     )
     scaleX(calc(var(--sileo-native-width) / var(--sileo-width))) !important;
@@ -298,6 +306,8 @@
   --overlay-radius: 0.625rem;
   --overlay-background: rgb(255 255 255);
   --overlay-foreground: oklch(0.141 0.005 285.823);
+  --overlay-card: rgb(255 255 255);
+  --overlay-card-foreground: oklch(0.141 0.005 285.823);
   --overlay-popover: rgb(255 255 255);
   --overlay-popover-foreground: oklch(0.141 0.005 285.823);
   --overlay-primary: oklch(0.21 0.006 285.885);
@@ -330,6 +340,8 @@
   --radius: var(--overlay-radius);
   --color-background: var(--overlay-background);
   --color-foreground: var(--overlay-foreground);
+  --color-card: var(--overlay-card);
+  --color-card-foreground: var(--overlay-card-foreground);
   --color-muted-foreground: var(--overlay-muted-foreground);
   --color-border: var(--overlay-border);
   --color-input: var(--overlay-input);
@@ -374,6 +386,8 @@
   color-scheme: dark;
   --overlay-background: oklch(0.051 0.005 285.823);
   --overlay-foreground: oklch(0.985 0 0);
+  --overlay-card: oklch(0.12 0.006 285.885);
+  --overlay-card-foreground: oklch(0.985 0 0);
   --overlay-popover: oklch(0.12 0.006 285.885);
   --overlay-popover-foreground: oklch(0.985 0 0);
   --overlay-primary: oklch(0.92 0.004 286.32);
@@ -591,6 +605,14 @@
   align-content: start;
   min-height: 100%;
   padding: 16px;
+}
+
+.overlay-pane--empty {
+  display: flex;
+}
+
+.overlay-pane--empty > [data-slot="empty"] {
+  flex: 1 1 auto;
 }
 
 .overlay-section {

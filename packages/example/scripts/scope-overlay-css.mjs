@@ -3,8 +3,7 @@ import path from "node:path";
 import postcss from "postcss";
 import selectorParser from "postcss-selector-parser";
 
-const SCOPE_ID = "overlay-host";
-const SCOPE_SELECTOR = `#${SCOPE_ID}`;
+const SCOPE_SELECTOR = '[data-overlay-root="true"]';
 const inputPath = path.resolve("dist/overlay.unscoped.css");
 const outputPath = path.resolve("dist/overlay.css");
 
@@ -19,27 +18,48 @@ function isKeyframesRule(rule) {
   return false;
 }
 
+function createScopeSelectorNode() {
+  return selectorParser.attribute({
+    attribute: "data-overlay-root",
+    operator: "=",
+    quoteMark: '"',
+    value: "true",
+  });
+}
+
 const normalizeSelector = selectorParser((selectors) => {
   selectors.each((selector) => {
     selector.walkPseudos((node) => {
       if (node.value === ":root" || node.value === ":host") {
-        node.replaceWith(selectorParser.id({ value: SCOPE_ID }));
+        node.replaceWith(createScopeSelectorNode());
       }
     });
 
     selector.walkTags((node) => {
       if (node.value === "html" || node.value === "body") {
-        node.replaceWith(selectorParser.id({ value: SCOPE_ID }));
+        node.replaceWith(createScopeSelectorNode());
       }
     });
   });
 });
 
+function hasScopeAttribute(selector) {
+  let scoped = false;
+  selectorParser((selectors) => {
+    selectors.walkAttributes((node) => {
+      if (node.attribute?.toLowerCase() === "data-overlay-root") {
+        scoped = true;
+      }
+    });
+  }).processSync(selector, { lossless: false });
+  return scoped;
+}
+
 function scopeSelector(selector) {
   const normalized = normalizeSelector.processSync(selector, {
     lossless: false,
   });
-  if (normalized.includes(SCOPE_SELECTOR)) {
+  if (hasScopeAttribute(normalized)) {
     return normalized;
   }
   return `${SCOPE_SELECTOR} ${normalized}`;

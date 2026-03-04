@@ -1,12 +1,12 @@
 import { sveltekit } from "@sveltejs/kit/vite";
-import demo from "demo";
+import { example } from "example";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [demo.vite(), sveltekit()],
+  plugins: [example().vite(), sveltekit()],
   server: {
     fs: {
-      allow: ["../shared/ui/src", "../../packages/demo/dist"],
+      allow: ["../shared/ui/src", "../../packages/example/dist"],
     },
   },
 });

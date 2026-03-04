@@ -54,7 +54,9 @@ async function step(label: string, fn: () => Promise<void>): Promise<void> {
 async function main(): Promise<void> {
   const force = process.argv.includes("--force");
 
-  console.log(`\n${C.bright}${C.cyan}Setting up demo examples...${C.reset}\n`);
+  console.log(
+    `\n${C.bright}${C.cyan}Setting up example examples...${C.reset}\n`,
+  );
 
   await step("Installing workspace dependencies", () => run("bun install"));
   await step("Building universa-kit", () => run("bun run build"));
@@ -63,8 +65,8 @@ async function main(): Promise<void> {
       run("bun install --force"),
     );
   }
-  await step("Building demo", () =>
-    run("bun run build", join(ROOT_DIR, "packages", "demo")),
+  await step("Building example", () =>
+    run("bun run build", join(ROOT_DIR, "packages", "example")),
   );
 
   console.log(`${C.bright}${C.green}✓ Setup complete!${C.reset}`);

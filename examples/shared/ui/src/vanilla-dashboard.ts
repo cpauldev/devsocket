@@ -3,7 +3,7 @@ import {
   type DashboardControllerState,
   type DashboardFrameworkId,
   createDashboardController,
-} from "demo/dashboard";
+} from "example/dashboard";
 import {
   type IconNode,
   Moon,
@@ -71,7 +71,7 @@ function createLucideIcon(
 
 function setThemeIcon(button: HTMLElement, theme: "light" | "dark"): void {
   const icon = theme === "dark" ? THEME_ICONS.dark : THEME_ICONS.light;
-  button.replaceChildren(createLucideIcon(icon, 20, "demo-theme-icon"));
+  button.replaceChildren(createLucideIcon(icon, 20, "example-theme-icon"));
 }
 
 interface ActionButtonRefs {
@@ -89,10 +89,10 @@ function createActionButton(input: {
   button.setAttribute("data-slot", "button");
   button.setAttribute("data-size", "sm");
   button.setAttribute("data-variant", "outline");
-  button.className = "demo-action-btn";
+  button.className = "example-action-btn";
   button.setAttribute("data-action", input.actionId);
   button.appendChild(
-    createLucideIcon(ACTION_ICONS[input.actionId], 14, "demo-action-icon"),
+    createLucideIcon(ACTION_ICONS[input.actionId], 14, "example-action-icon"),
   );
 
   const label = document.createElement("span");
@@ -141,22 +141,22 @@ export function mountVanillaDashboard(options: {
   const vitePlusIconHtml = createLucideIcon(
     Plus,
     14,
-    "demo-vite-tag-plus-icon",
+    "example-vite-tag-plus-icon",
   ).outerHTML;
   const viteTagHtml = framework.usesVite
-    ? `<div class="demo-vite-tag" aria-label="Powered by Vite">${vitePlusIconHtml}<span class="demo-vite-tag-icon" aria-hidden="true">${viteBadgeIconSvg()}</span><span>Vite</span></div>`
+    ? `<div class="example-vite-tag" aria-label="Powered by Vite">${vitePlusIconHtml}<span class="example-vite-tag-icon" aria-hidden="true">${viteBadgeIconSvg()}</span><span>Vite</span></div>`
     : "";
 
-  options.root.className = "demo-page universa-ui-root universa-ui-surface";
+  options.root.className = "example-page universa-ui-root universa-ui-surface";
   options.root.setAttribute("data-theme", theme);
   options.root.innerHTML = `
-    <div class="demo-container">
-      <header class="demo-header">
-        <div class="demo-header-left">
-          <h1 class="demo-title">Demo</h1>
-          <div class="demo-pill-row">
-            <div class="demo-pill" style="background-color:${framework.pillBg};color:${framework.pillFg};">
-              <span class="demo-pill-icon" aria-hidden="true">${frameworkIconSvg(options.frameworkId)}</span>
+    <div class="example-container">
+      <header class="example-header">
+        <div class="example-header-left">
+          <h1 class="example-title">Example</h1>
+          <div class="example-pill-row">
+            <div class="example-pill" style="background-color:${framework.pillBg};color:${framework.pillFg};">
+              <span class="example-pill-icon" aria-hidden="true">${frameworkIconSvg(options.frameworkId)}</span>
               <span>${escapeHtml(framework.pillLabel)}</span>
             </div>
             ${viteTagHtml}
@@ -164,24 +164,24 @@ export function mountVanillaDashboard(options: {
         </div>
       </header>
 
-      <div class="demo-top-controls" data-runtime-controls="true"></div>
+      <div class="example-top-controls" data-runtime-controls="true"></div>
 
-      <div class="demo-dashboard-grid">
-        <div class="demo-column">
-          <div data-slot="card" class="demo-dashboard-card" style="border-radius:var(--universa-ui-radius-2xl);box-shadow:none;">
+      <div class="example-dashboard-grid">
+        <div class="example-column">
+          <div data-slot="card" class="example-dashboard-card" style="border-radius:var(--universa-ui-radius-2xl);box-shadow:none;">
             <div data-slot="card-header">
-              <div class="demo-card-header-row">
+              <div class="example-card-header-row">
                 <p data-slot="card-title">Runtime</p>
               </div>
-              <p data-slot="card-description" class="demo-runtime-summary" data-runtime-summary="true"></p>
+              <p data-slot="card-description" class="example-runtime-summary" data-runtime-summary="true"></p>
             </div>
             <div data-slot="card-content"><div data-runtime-tabs-host="true"></div></div>
           </div>
         </div>
       </div>
 
-      <div class="demo-bottom-controls">
-        <button data-slot="button" data-size="icon" data-variant="outline" class="demo-theme-toggle" data-toggle-theme="true" aria-label="Toggle theme" title="Toggle theme"></button>
+      <div class="example-bottom-controls">
+        <button data-slot="button" data-size="icon" data-variant="outline" class="example-theme-toggle" data-toggle-theme="true" aria-label="Toggle theme" title="Toggle theme"></button>
       </div>
     </div>
   `;
@@ -204,8 +204,8 @@ export function mountVanillaDashboard(options: {
   }
 
   const tabs = new Tabs({
-    className: "demo-runtime-tabs",
-    listClassName: "demo-runtime-tabs-list",
+    className: "example-runtime-tabs",
+    listClassName: "example-runtime-tabs-list",
     orientation: "horizontal",
     variant: "default",
     items: [],

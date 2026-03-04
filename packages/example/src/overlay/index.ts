@@ -1,5 +1,10 @@
-import { OVERLAY_DISABLE_KEY } from "./constants.js";
-import { DemoOverlay } from "./overlay.js";
+import { resolveClientAutoMount } from "universa-kit/client-runtime";
+
+import {
+  OVERLAY_INSTANCE_GLOBAL_KEY,
+  OVERLAY_MODULE_SPECIFIER,
+} from "./constants.js";
+import { ExampleOverlay } from "./overlay.js";
 import type { OverlayMountOptions } from "./types.js";
 
 // ── Mount policy ─────────────────────────────────────────────────────────────
@@ -40,7 +45,7 @@ function isDevLikeEnvironment(): boolean {
   if (env && env !== "development" && env !== "test") return false;
 
   if (isLikelyLocalHost(window.location.hostname)) return true;
-  return window.location.search.includes("demoOverlay=1");
+  return false;
 }
 
 // ── Instance management ───────────────────────────────────────────────────────
@@ -50,27 +55,35 @@ interface OverlayInstanceLike {
   destroy(): void;
 }
 
-declare global {
-  interface Window {
-    __DEMO_OVERLAY_DISABLED__?: boolean;
-    __DEMO_OVERLAY_ENABLED__?: boolean;
-    __DEMO_OVERLAY_INSTANCE__?: OverlayInstanceLike | null;
-  }
+interface OverlayRuntimeWindow extends Window {
+  [key: string]: unknown;
 }
 
-let overlayInstance: DemoOverlay | null = null;
+let overlayInstance: ExampleOverlay | null = null;
+
+function getOverlayWindow(): OverlayRuntimeWindow {
+  return window as unknown as OverlayRuntimeWindow;
+}
+
+function getOverlayFlagKey(suffix: "disabled" | "enabled"): string {
+  return `${OVERLAY_INSTANCE_GLOBAL_KEY}:${suffix}`;
+}
 
 function getGlobalOverlayInstance(): OverlayInstanceLike | null {
   if (!isBrowserRuntime()) return overlayInstance;
-  const globalInstance = window.__DEMO_OVERLAY_INSTANCE__ ?? null;
+  const globalInstance = getOverlayWindow()[OVERLAY_INSTANCE_GLOBAL_KEY] as
+    | OverlayInstanceLike
+    | null
+    | undefined;
   if (globalInstance && !overlayInstance)
-    overlayInstance = globalInstance as DemoOverlay;
-  return globalInstance;
+    overlayInstance = globalInstance as ExampleOverlay;
+  return globalInstance ?? null;
 }
 
 function setGlobalOverlayInstance(instance: OverlayInstanceLike | null): void {
-  if (isBrowserRuntime()) window.__DEMO_OVERLAY_INSTANCE__ = instance;
-  overlayInstance = instance as DemoOverlay | null;
+  if (isBrowserRuntime())
+    getOverlayWindow()[OVERLAY_INSTANCE_GLOBAL_KEY] = instance;
+  overlayInstance = instance as ExampleOverlay | null;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -78,30 +91,28 @@ function setGlobalOverlayInstance(instance: OverlayInstanceLike | null): void {
 export function shouldMountOverlay(force = false): boolean {
   if (!isBrowserRuntime()) return false;
   if (force) return true;
-  if (window.__DEMO_OVERLAY_DISABLED__) return false;
-  if (window.__DEMO_OVERLAY_ENABLED__ === true) return true;
+  const runtimeWindow = getOverlayWindow();
+  if (runtimeWindow[getOverlayFlagKey("disabled")] === true) return false;
+  if (runtimeWindow[getOverlayFlagKey("enabled")] === true) return true;
 
-  try {
-    if (localStorage.getItem(OVERLAY_DISABLE_KEY) === "true") return false;
-  } catch {
-    // Ignore localStorage failures.
-  }
-
-  return isDevLikeEnvironment();
+  return resolveClientAutoMount(
+    OVERLAY_MODULE_SPECIFIER,
+    isDevLikeEnvironment(),
+  );
 }
 
 export function mountOverlay(
   options: OverlayMountOptions = {},
-): DemoOverlay | null {
+): ExampleOverlay | null {
   if (!shouldMountOverlay(options.force)) return null;
 
   const existing = getGlobalOverlayInstance();
   if (existing) {
     existing.mount();
-    return existing as DemoOverlay;
+    return existing as ExampleOverlay;
   }
 
-  const instance = new DemoOverlay({
+  const instance = new ExampleOverlay({
     baseUrl: options.baseUrl,
     force: options.force,
   });
@@ -115,9 +126,9 @@ export function unmountOverlay(): void {
   setGlobalOverlayInstance(null);
 }
 
-export { DemoOverlay };
-export { createDemoApi } from "./api.js";
-export type { DemoApi } from "./api.js";
+export { ExampleOverlay };
+export { createExampleApi } from "./api.js";
+export type { ExampleApi } from "./api.js";
 export type { OverlayMountOptions };
 export type { UniversaBridgeState, UniversaRuntimeStatus } from "./types.js";
 

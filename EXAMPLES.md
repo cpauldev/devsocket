@@ -8,7 +8,7 @@
 
 ## Overview
 
-The `examples/` directory contains nine framework examples that each demonstrate a working Universa integration with the `demo` overlay package. Each example starts its own dev server with the demo bridge mounted, so the overlay appears in the browser and connects to a local demo runtime.
+The `examples/` directory contains nine framework examples that each show a working Universa integration with the `example` overlay package. Each example starts its own dev server with the example bridge mounted, so the overlay appears in the browser and connects to a local example runtime.
 
 | ID          | Framework  | Default port |
 | ----------- | ---------- | ------------ |
@@ -31,7 +31,7 @@ The runner assigns ports sequentially starting at `4600`. If one is already in u
 
 ## First-Time Setup
 
-Run the setup script once from the repository root. It installs workspace dependencies and builds the `universa-kit` and `demo` packages that the examples depend on.
+Run the setup script once from the repository root. It installs workspace dependencies and builds the `universa-kit` and `example` packages that the examples depend on.
 
 ```bash
 bun run examples:setup
@@ -41,7 +41,7 @@ This runs the following steps in order:
 
 1. `bun install` — installs all workspace dependencies
 2. `bun run build` — builds the `universa-kit` package
-3. `bun run build` in `packages/demo` — builds the `demo` overlay package
+3. `bun run build` in `packages/example` — builds the `example` overlay package
 
 After setup completes, no further build steps are needed to run examples unless source files change (see [Rebuilding after source changes](#rebuilding-after-source-changes)).
 
@@ -88,18 +88,18 @@ Servers start normally but no browser tabs are opened.
 bun run verify:examples
 ```
 
-Checks each example's health and bridge state endpoints (`/__demo/health` and `/__demo/state`) and reports pass/fail per example. Requires all examples to be running.
+Checks each example's health and bridge state endpoints (`/__universa/example/health` and `/__universa/example/state`) and reports pass/fail per example. Requires all examples to be running.
 
 ## Rebuilding after source changes
 
-When `src/` (Universa core) or `packages/demo/src/` (demo overlay) changes, rebuild before running examples:
+When `src/` (Universa core) or `packages/example/src/` (example overlay) changes, rebuild before running examples:
 
 ```bash
 # Rebuild universa-kit
 bun run build
 
-# Rebuild demo overlay
-bun run build --filter=demo
+# Rebuild example overlay
+bun run build --filter=example
 
 # Or run setup again to rebuild both
 bun run examples:setup
@@ -112,13 +112,13 @@ Individual examples do not need rebuilding — they import the packages directly
 Each example lives under `examples/<id>/` and follows the same pattern:
 
 - Standard framework project (Next.js app router, SvelteKit, Astro, etc.)
-- `demo` package wired in via the appropriate adapter (`demo.vite()`, `demo.next()`, `demo.astro()`, `demo.nuxt()`)
-- No framework-level `demo/overlay` import is required; overlay mounting is handled by the `demo` integration/runtime automatically
+- `example` package wired in via factory preset creation (`example()`) and adapter methods (`example().vite()`, `example().next(...)`, `example().astro()`, `example().nuxt()`)
+- No framework-level `example/overlay` import is required; overlay mounting is handled by the `example` integration/runtime automatically
 - Shared UI components from `examples/shared/ui/` (`example-ui` workspace package)
 
 ### Vinext, Solid, and Nuxt notes
 
-Vinext and Solid both use the Vite adapter (`demo.vite()`) directly because they run on Vite dev servers. Vinext additionally includes `resolve.dedupe` for React packages and `optimizeDeps.include` for `react-server-dom-webpack` to prevent Bun workspace resolution issues. See `examples/vinext/vite.config.ts`.
+Vinext and Solid both use the Vite adapter (`example().vite()`) directly because they run on Vite dev servers. Vinext additionally includes `resolve.dedupe` for React packages and `optimizeDeps.include` for `react-server-dom-webpack` to prevent Bun workspace resolution issues. See `examples/vinext/vite.config.ts`.
 
 Nuxt runs with `--no-fork` in the examples runner to avoid dev worker restart loops (`ECONNRESET`) during multi-example runs.
 

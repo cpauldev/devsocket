@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "universa-ui/styles.css";
 
 export const metadata: Metadata = {
-  title: "Demo — Next.js",
+  title: "Example — Next.js",
   icons: {
     icon: "/favicon.svg",
   },

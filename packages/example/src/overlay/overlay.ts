@@ -15,9 +15,9 @@ import {
   normalizeTheme,
 } from "./OverlayPanel.js";
 import {
-  type DemoApi,
+  type ExampleApi,
   type WebSocketBinding,
-  createDemoApi,
+  createExampleApi,
   createWebSocketBinding,
   getDevServerBaseUrlCandidates,
   resolveDevServerBaseUrl,
@@ -121,12 +121,8 @@ function shouldRetainConnectedState(
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface OverlayWindowConfig {
-  __NUXT__?: unknown;
-}
-
 const OVERLAY_STYLE_ATTRIBUTE = "data-overlay-runtime-styles";
-const OVERLAY_TOAST_ID = "demo-overlay";
+const OVERLAY_TOAST_ID = "example-overlay";
 let overlayStyleLoadPromise: Promise<void> | null = null;
 let overlayStyleRefCount = 0;
 
@@ -234,7 +230,7 @@ function OverlayToastController({
       // Initial creation.
       toastIdRef.current = sileo.info({
         id: OVERLAY_TOAST_ID,
-        title: "Demo",
+        title: "Example",
         description: createReactElement(OverlayPanelDescription, {
           store,
         }),
@@ -488,8 +484,8 @@ function OverlayRoot({
   );
 }
 
-export class DemoOverlay {
-  #api: DemoApi;
+export class ExampleOverlay {
+  #api: ExampleApi;
   #baseUrl: string;
   #baseUrlCandidates: string[] = [];
   #baseUrlCandidateIndex = 0;
@@ -521,12 +517,10 @@ export class DemoOverlay {
     this.#baseUrlCandidates = getDevServerBaseUrlCandidates(options.baseUrl);
     this.#baseUrl =
       this.#baseUrlCandidates[0] || resolveDevServerBaseUrl(options.baseUrl);
-    this.#api = createDemoApi(this.#baseUrl);
+    this.#api = createExampleApi(this.#baseUrl);
     this.#forceMount = Boolean(options.force);
     this.#allowWebSocket =
-      typeof window === "undefined"
-        ? true
-        : !(window as Window & OverlayWindowConfig).__NUXT__;
+      typeof window === "undefined" || typeof window.WebSocket === "function";
     this.#panelStore = new OverlayPanelStore(this.buildPanelProps());
 
     if (this.#forceMount && !settings.enabled) {
@@ -719,6 +713,7 @@ export class DemoOverlay {
       onStop: () => void this.handleStop(),
       onRestart: () => void this.handleRestart(),
       onLoadFileMetadata: (path) => void this.loadFileMetadata(path),
+      onOpenFile: (path) => void this.openFile(path),
       onEnsureFileTreeLoaded: () => void this.ensureFileTreeLoaded(),
     };
   }
@@ -787,6 +782,14 @@ export class DemoOverlay {
       }
     } catch {
       this.dispatch({ type: "setFileMetadata", metadata: null });
+    }
+  }
+
+  private async openFile(path: string): Promise<void> {
+    try {
+      await this.#api.openFile(path);
+    } catch {
+      // Best-effort: opening files in editor is non-critical.
     }
   }
 
@@ -1016,7 +1019,7 @@ export class DemoOverlay {
   private setActiveBaseUrl(baseUrl: string): void {
     if (this.#baseUrl === baseUrl) return;
     this.#baseUrl = baseUrl;
-    this.#api = createDemoApi(this.#baseUrl);
+    this.#api = createExampleApi(this.#baseUrl);
   }
 
   private rotateBaseUrlCandidate(): void {

@@ -1,38 +1,52 @@
 import {
   type MiddlewareAdapterServer,
   type UniversaAdapterOptions,
+  buildClientRuntimeContextRegistration,
   createBridgeLifecycle,
   resolveAdapterOptions,
 } from "../shared/adapter-utils.js";
 
 export type AstroUniversaOptions = UniversaAdapterOptions;
+export type UniversaAstroIntegration = {
+  name: string;
+  hooks: Record<string, (options: unknown) => void | Promise<void>>;
+};
 
 export function createUniversaAstroIntegration(
   options: AstroUniversaOptions = {},
-) {
+): UniversaAstroIntegration {
   const resolvedOptions = resolveAdapterOptions(options);
   const lifecycle = createBridgeLifecycle(resolvedOptions);
-  const overlayModule = resolvedOptions.overlayModule;
+  const clientModule =
+    resolvedOptions.clientEnabled === false
+      ? undefined
+      : resolvedOptions.clientModule;
 
   return {
     name: resolvedOptions.adapterName,
     hooks: {
-      "astro:config:setup": ({
-        command,
-        injectScript,
-      }: {
-        command?: string;
-        injectScript?: (stage: string, content: string) => void;
-      }) => {
-        if (overlayModule && command === "dev" && injectScript) {
-          injectScript("page", `import ${JSON.stringify(overlayModule)};`);
+      "astro:config:setup": (options: unknown) => {
+        const setupOptions = (options ?? {}) as {
+          command?: string;
+          injectScript?: (stage: unknown, content: string) => void;
+        };
+        const command = setupOptions.command;
+        const injectScript = setupOptions.injectScript;
+        if (clientModule && command === "dev" && injectScript) {
+          const registerContext = buildClientRuntimeContextRegistration(
+            clientModule,
+            resolvedOptions.clientRuntimeContext,
+          ).join("\n");
+          injectScript(
+            "page",
+            `${registerContext}\nimport ${JSON.stringify(clientModule)};`,
+          );
         }
       },
-      "astro:server:setup": async ({
-        server,
-      }: {
-        server: MiddlewareAdapterServer;
-      }) => {
+      "astro:server:setup": async (options: unknown) => {
+        const server = (options as { server?: MiddlewareAdapterServer })
+          ?.server;
+        if (!server) return;
         await lifecycle.setup(server);
       },
       "astro:server:done": async () => {

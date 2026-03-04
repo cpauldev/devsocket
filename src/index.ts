@@ -105,6 +105,15 @@ export {
   type UniversaEventsSubscriptionOptions,
   type UniversaWebSocketLike,
 } from "./client/client.js";
+export {
+  createClientRuntimeContext,
+  getClientRuntimeContexts,
+  registerClientRuntimeContext,
+  registerClientRuntimeContexts,
+  resolveClientAutoMount,
+  resolveClientRuntimeContext,
+  type UniversaClientRuntimeContext,
+} from "./client/runtime-context.js";
 export type {
   UniversaBridgeCapabilities,
   UniversaBridgeEvent,
